@@ -87,7 +87,8 @@ The correction fixes a *timing* bias; it cannot repair the data.
 
 - **Complete death ascertainment.** A death missing from the line list (e.g. a
   community death outside a treatment centre) is treated as a survivor and
-  biases the CFR down — the dominant risk when ascertainment is ETC-centred.
+  biases the CFR down. This is the dominant risk when ascertainment is
+  ETC-centred.
 - **Deaths known on the day they occur.** Notification lag reintroduces the bias
   the model removes, via the data rather than the delay; nowcast or caveat the
   death series if that lag is non-trivial.

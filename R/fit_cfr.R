@@ -17,8 +17,8 @@
 #' cfrnow_priors(delay_mean_mean = 10)
 #' @export
 cfrnow_priors <- function(delay_mean_mean = 12.75, delay_mean_sd = 3,
-                           delay_sd_mean = 7, delay_sd_sd = 2,
-                           cfr_a = 6.6, cfr_b = 13.4) {
+                          delay_sd_mean = 7, delay_sd_sd = 2,
+                          cfr_a = 6.6, cfr_b = 13.4) {
   list(delay_mean_mean = delay_mean_mean, delay_mean_sd = delay_mean_sd,
        delay_sd_mean = delay_sd_mean, delay_sd_sd = delay_sd_sd,
        cfr_a = cfr_a, cfr_b = cfr_b)

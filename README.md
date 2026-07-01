@@ -23,14 +23,14 @@ for deaths at any mid-outbreak cut-off.
 `cfrnow` avoids conditioning on resolution at all. Each case is fatal with
 probability `cfr`; a fatal case dies at an interval-censored onset-to-death
 delay `F`; every case still alive at the cut-off is **right-censored**,
-contributing the mixture-cure survival term `1 - cfr * F(t)` — the probability
-it is either non-fatal or fatal-but-not-yet-resolved. With `F` fixed this is
+contributing the mixture-cure survival term `1 - cfr * F(t)`, the probability
+that it is either non-fatal or fatal but not yet resolved. With `F` fixed this is
 the Ghani/Nishiura `deaths / sum_i F(t_i)` estimator; here `F` is co-estimated
 and its uncertainty propagated. Recovery times are not needed, so the
 resolved-set enrichment bias cannot arise.
 
 Onset dates are interval-censored and, in real-time mode, `F` is
-right-truncated at the cut-off — handled by the analytical censored-CDF
+right-truncated at the cut-off. Both are handled by the analytical censored-CDF
 machinery vendored from
 [`primarycensored`](https://primarycensored.epinowcast.org/).
 
@@ -53,7 +53,7 @@ cases that have not died); optional `onset_lower`/`onset_upper` give an onset
 window that widens the primary censoring.
 
 `summarise_cfr()` reports `rhat`/`ess_bulk` and flags (`cfr_low_information`)
-when the CFR posterior has barely moved from its prior — which is expected early
+when the CFR posterior has barely moved from its prior. That is expected early
 in an outbreak, when few deaths have resolved and the CFR is only weakly
 identified. Treat a flagged estimate as prior-driven.
 
@@ -68,8 +68,8 @@ before quoting a number:
   ascertainment is ETC-centred this is the single biggest threat to validity.
 - **Deaths known on their day of occurrence.** The model assumes a death enters
   the data when it happens. Real notification lag reintroduces the very bias the
-  model exists to remove, through the data pipeline rather than the delay —
-  nowcast or caveat the death series if that lag is non-trivial.
+  model exists to remove, through the data pipeline rather than the delay. If
+  that lag is non-trivial, nowcast or caveat the death series.
 - **A single, stationary onset-to-death delay and a single, homogeneous CFR**
   over the whole outbreak. As treatment access (supportive care, monoclonals)
   scales up, the true CFR should fall, and a pooled estimate lags reality
