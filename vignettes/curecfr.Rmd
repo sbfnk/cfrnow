@@ -1,0 +1,88 @@
+---
+title: "Real-time CFR with curecfr"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Real-time CFR with curecfr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## The problem
+
+The naive case fatality ratio, `deaths / cases`, is biased **downward** in real
+time: recent cases have not yet had time to die. Restricting to cases with a
+*resolved* outcome, `deaths / (deaths + recoveries)`, swaps that for an
+**upward** bias, because deaths resolve faster than recoveries, so at any
+mid-outbreak cut-off the resolved set is enriched for deaths.
+
+`curecfr` sidesteps both by never conditioning on resolution. Each case is fatal
+with probability `cfr`; a fatal case dies at an interval-censored onset-to-death
+delay `F`; every case still alive at the cut-off is right-censored, contributing
+the mixture-cure survival term `1 - cfr * F(t)`. Recovery times are not used, so
+the resolved-set enrichment cannot arise.
+
+```{r setup}
+library(curecfr)
+```
+
+## A line list
+
+Your line list needs an `onset_date` and a `death_date` (`NA` for cases that
+have not died); an optional `onset_lower`/`onset_upper` window widens the onset
+censoring. Here we simulate one with a known CFR of 0.55 sampled part-way
+through a growing epidemic.
+
+```{r simulate}
+set.seed(1)
+ll <- simulate_linelist(n = 500, cfr = 0.55, delay_mean = 12.75, delay_sd = 7,
+                        delay_family = "gamma", onset_days = 45)
+head(ll)
+```
+
+## Preparing the data at a cut-off
+
+`prepare_cfr_data()` classifies each case at the observation cut-off into an
+observed death, a right-censored survivor, or (retrospectively) a fully-resolved
+non-death.
+
+```{r prepare}
+cutoff <- max(ll$onset_date) - 3
+d <- prepare_cfr_data(ll, obs_time = cutoff)
+c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
+naive <- d$n_deaths / d$n_cases
+round(naive, 3)  # the downward-biased naive ratio
+```
+
+## Fitting
+
+`fit_cfr()` fits the mixture-cure model with cmdstanr. The delay is
+parameterised by its mean and standard deviation, so the choice of family
+(`"gamma"` by default, or `"lognormal"`) leaves the priors and summaries
+unchanged. This step needs a working CmdStan install and is not run when the
+vignette is built.
+
+```{r fit, eval = FALSE}
+fit <- fit_cfr(d, delay_family = "gamma")
+summarise_cfr(fit)
+#>     quantity   mean   q2.5    q50  q97.5
+#> 1        cfr  0.579  0.528  0.579  0.625
+#> 2 delay_mean 12.700 11.500 12.700 13.900
+#> 3   delay_sd  7.200  6.300  7.200  8.200
+```
+
+The corrected CFR (~0.58) recovers the true 0.55 and sits well above the naive
+`r round(naive, 2)`, which is depressed by the many recent, not-yet-resolved
+cases. Pass `obs_time = NULL` to `prepare_cfr_data()` for a retrospective,
+fully-resolved fit, which returns the naive ratio with the delay as a nuisance.
+
+## Notes
+
+- `curecfr_families()` lists the supported onset-to-death delay families.
+- `curecfr_priors()` sets the priors on the delay mean/sd (days) and the CFR.
+- The mixture-cure correction fixes the *timing* bias only. It still assumes
+  deaths are ascertained; under-counted deaths (for example community deaths
+  outside treatment centres) are a separate problem it cannot repair.

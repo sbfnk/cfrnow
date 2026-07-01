@@ -1,0 +1,63 @@
+# curecfr
+
+Real-time case fatality ratio (CFR) estimation from line-list data, using a
+Bayesian **mixture-cure survival model**. It is the R counterpart of the CFR
+component of the Julia
+[`bdbv-2026-linelist-analysis`](https://github.com/sbfnk/bdbv-2026-linelist-analysis)
+model, built for collaborators who work in R.
+
+## Why
+
+The naive `deaths / cases` ratio is biased **downward** in real time: recent
+cases have not yet had time to die. Restricting to cases with a *resolved*
+outcome (`deaths / (deaths + recoveries)`) swaps that for an **upward** bias,
+because deaths resolve faster than recoveries, so the resolved set is enriched
+for deaths at any mid-outbreak cut-off.
+
+`curecfr` avoids conditioning on resolution at all. Each case is fatal with
+probability `cfr`; a fatal case dies at an interval-censored onset-to-death
+delay `F`; every case still alive at the cut-off is **right-censored**,
+contributing the mixture-cure survival term `1 - cfr * F(t)` — the probability
+it is either non-fatal or fatal-but-not-yet-resolved. With `F` fixed this is
+the Ghani/Nishiura `deaths / sum_i F(t_i)` estimator; here `F` is co-estimated
+and its uncertainty propagated. Recovery times are not needed, so the
+resolved-set enrichment bias cannot arise.
+
+Onset dates are interval-censored and, in real-time mode, `F` is
+right-truncated at the cut-off — handled by the analytical censored-CDF
+machinery vendored from
+[`primarycensored`](https://primarycensored.epinowcast.org/).
+
+## Usage
+
+```r
+library(curecfr)
+
+ll  <- simulate_linelist(n = 400, cfr = 0.55)   # or your own onset_date/death_date
+d   <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
+fit <- fit_cfr(d)
+summarise_cfr(fit)
+```
+
+Pass `obs_time = NULL` for a retrospective (fully-resolved) fit, which reduces
+to the naive ratio with the delay as a nuisance.
+
+Your line list needs an `onset_date` column and a `death_date` column (`NA` for
+cases that have not died); optional `onset_lower`/`onset_upper` give an onset
+window that widens the primary censoring.
+
+## Status
+
+Early but functional. The model, data preparation, summaries, a vignette and
+unit tests are in place, and `R CMD check` is clean. Gamma (the default) and
+lognormal onset-to-death families are supported; the mean/sd parameterisation
+keeps priors and summaries identical across them.
+
+## Requirements
+
+- [cmdstanr](https://mc-stan.org/cmdstanr/) and a working CmdStan install
+- [primarycensored](https://primarycensored.epinowcast.org/)
+
+The primarycensored Stan functions are vendored into
+`inst/stan/include/pcd_functions.stan`; regenerate with `data-raw/vendor_stan.R`
+after upgrading primarycensored.

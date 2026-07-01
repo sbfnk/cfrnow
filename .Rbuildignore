@@ -1,0 +1,10 @@
+^data-raw$
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^\.github$
+# cmdstanr compiles the model binary next to the .stan file; never ship it
+^inst/stan/curecfr$
+^inst/stan/curecfr\.exe$
+^inst/stan/.*\.hpp$
+^inst/stan/.*\.o$
