@@ -7,8 +7,8 @@
 fit_cfr(
   data,
   delay_family = "gamma",
-  priors = curecfr_priors(),
-  model = curecfr_model(),
+  priors = cfrnow_priors(),
+  model = cfrnow_model(),
   chains = 4,
   parallel_chains = chains,
   iter_warmup = 1000,
@@ -19,16 +19,16 @@ fit_cfr(
 )
 }
 \arguments{
-\item{data}{A \code{curecfr_data} list from \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}.}
+\item{data}{A \code{cfrnow_data} list from \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}.}
 
-\item{delay_family}{Onset-to-death delay family; see \code{\link[=curecfr_families]{curecfr_families()}}.
+\item{delay_family}{Onset-to-death delay family; see \code{\link[=cfrnow_families]{cfrnow_families()}}.
 Defaults to \code{"gamma"} (the family selected for BDBV in the Isiro
 reanalysis). The mean/sd parameterisation makes priors and summaries
 identical across families.}
 
-\item{priors}{Prior hyperparameters, see \code{\link[=curecfr_priors]{curecfr_priors()}}.}
+\item{priors}{Prior hyperparameters, see \code{\link[=cfrnow_priors]{cfrnow_priors()}}.}
 
-\item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=curecfr_model]{curecfr_model()}}.}
+\item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=cfrnow_model]{cfrnow_model()}}.}
 
 \item{chains, parallel_chains, iter_warmup, iter_sampling, seed}{Passed to
 \code{CmdStanModel$sample()}.}
@@ -40,7 +40,7 @@ delay-sd = 0 boundary.}
 \item{...}{Further arguments to \code{CmdStanModel$sample()}.}
 }
 \value{
-A \code{curecfr_fit} object wrapping the \code{CmdStanMCMC} fit and \code{data}.
+A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit and \code{data}.
 }
 \description{
 Fit the real-time mixture-cure CFR model

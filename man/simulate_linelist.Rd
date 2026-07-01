@@ -21,11 +21,12 @@ simulate_linelist(
 
 \item{delay_mean, delay_sd}{Onset-to-death delay mean and sd (days).}
 
-\item{delay_family}{Delay family; see \code{\link[=curecfr_families]{curecfr_families()}}.}
+\item{delay_family}{Delay family; see \code{\link[=cfrnow_families]{cfrnow_families()}}.}
 
 \item{onset_start}{First possible onset date.}
 
-\item{onset_days}{Width of the onset window (days); onsets are uniform over it.}
+\item{onset_days}{Width of the onset window (days); onsets are uniform
+over it.}
 }
 \value{
 A data frame with \code{onset_date} and \code{death_date}.

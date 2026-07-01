@@ -26,7 +26,7 @@
 #' @param max_delay Largest plausible onset-to-death delay (days). Death records
 #'   implying a longer or negative delay are dropped as date-entry errors.
 #'
-#' @return A `curecfr_data` list with the Stan inputs (`n_death`,
+#' @return A `cfrnow_data` list with the Stan inputs (`n_death`,
 #'   `death_delay`, `death_width`, `n_cens`, `censor_time`, `censor_width`,
 #'   `n_resolved`) plus `n_cases`, `n_deaths`, `t0` and `obs_time`.
 #' @examples
@@ -113,6 +113,6 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
       t0 = t0,
       obs_time = if (retrospective) as.Date(NA) else obs_time
     ),
-    class = "curecfr_data"
+    class = "cfrnow_data"
   )
 }

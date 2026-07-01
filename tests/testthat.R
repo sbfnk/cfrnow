@@ -1,4 +1,4 @@
 library(testthat)
-library(curecfr)
+library(cfrnow)
 
-test_check("curecfr")
+test_check("cfrnow")

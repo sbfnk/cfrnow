@@ -23,7 +23,7 @@ beta_sd <- function(a, b) {
 #' the `cfr_low_information` attribute: `TRUE` when the CFR posterior sd exceeds
 #' `info_tol` times the prior sd.
 #'
-#' @param object A `curecfr_fit` from [fit_cfr()].
+#' @param object A `cfrnow_fit` from [fit_cfr()].
 #' @param probs Quantiles to report.
 #' @param info_tol Low-information threshold: flag when the CFR posterior sd is
 #'   more than this fraction of the prior sd. Defaults to 0.9.
@@ -39,7 +39,7 @@ beta_sd <- function(a, b) {
 #' @export
 summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
                           info_tol = 0.9, ...) {
-  if (!inherits(object, "curecfr_fit")) {
+  if (!inherits(object, "cfrnow_fit")) {
     stop("`object` must come from fit_cfr().", call. = FALSE)
   }
   vars <- c("cfr", "delay_mean", "delay_sd")
@@ -71,9 +71,9 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
 }
 
 #' @export
-print.curecfr_fit <- function(x, ...) {
+print.cfrnow_fit <- function(x, ...) {
   s <- summarise_cfr(x)
-  message("<curecfr_fit> ", x$delay_family, " delay")
+  message("<cfrnow_fit> ", x$delay_family, " delay")
   message("  cases: ", x$data$n_cases,
           "   deaths by cut-off: ", x$data$n_deaths,
           "   naive CFR: ", round(attr(s, "naive_cfr"), 3))

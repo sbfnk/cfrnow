@@ -8,12 +8,12 @@ reference:
   contents:
   - prepare_cfr_data
   - fit_cfr
-  - curecfr_model
-  - curecfr_priors
+  - cfrnow_model
+  - cfrnow_priors
 - title: Summarise
   contents:
   - summarise_cfr
 - title: Families and simulation
   contents:
-  - curecfr_families
+  - cfrnow_families
   - simulate_linelist

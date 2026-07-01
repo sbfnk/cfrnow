@@ -1,8 +1,8 @@
-# curecfr
+# cfrnow
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/sbfnk/curecfr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sbfnk/curecfr/actions/workflows/R-CMD-check.yaml)
-[![codecov](https://codecov.io/gh/sbfnk/curecfr/branch/main/graph/badge.svg)](https://app.codecov.io/gh/sbfnk/curecfr)
+[![R-CMD-check](https://github.com/sbfnk/cfrnow/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sbfnk/cfrnow/actions/workflows/R-CMD-check.yaml)
+[![codecov](https://codecov.io/gh/sbfnk/cfrnow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/sbfnk/cfrnow)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
@@ -20,7 +20,7 @@ outcome (`deaths / (deaths + recoveries)`) swaps that for an **upward** bias,
 because deaths resolve faster than recoveries, so the resolved set is enriched
 for deaths at any mid-outbreak cut-off.
 
-`curecfr` avoids conditioning on resolution at all. Each case is fatal with
+`cfrnow` avoids conditioning on resolution at all. Each case is fatal with
 probability `cfr`; a fatal case dies at an interval-censored onset-to-death
 delay `F`; every case still alive at the cut-off is **right-censored**,
 contributing the mixture-cure survival term `1 - cfr * F(t)` — the probability
@@ -37,7 +37,7 @@ machinery vendored from
 ## Usage
 
 ```r
-library(curecfr)
+library(cfrnow)
 
 ll  <- simulate_linelist(n = 400, cfr = 0.55)   # or your own onset_date/death_date
 d   <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))

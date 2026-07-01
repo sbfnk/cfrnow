@@ -1,6 +1,6 @@
 #' Supported onset-to-death delay families
 #'
-#' The families `curecfr` can fit, each an analytical primarycensored delay
+#' The families `cfrnow` can fit, each an analytical primarycensored delay
 #' distribution paired with a uniform primary event and parameterised here by
 #' its mean and standard deviation. Weibull is analytically available in
 #' primarycensored but not yet wired into the mean/sd conversion, so it is
@@ -8,15 +8,15 @@
 #'
 #' @return A character vector of supported family names.
 #' @examples
-#' curecfr_families()
+#' cfrnow_families()
 #' @export
-curecfr_families <- function() {
+cfrnow_families <- function() {
   c("lognormal", "gamma")
 }
 
 # Match a family name against the supported set (single source of validation).
 validate_family <- function(delay_family) {
-  match.arg(delay_family, curecfr_families())
+  match.arg(delay_family, cfrnow_families())
 }
 
 # Validate a family name and return its primarycensored delay dist_id.

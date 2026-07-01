@@ -10,7 +10,7 @@
 #' @param n Number of cases.
 #' @param cfr True case fatality ratio.
 #' @param delay_mean,delay_sd Onset-to-death delay mean and sd (days).
-#' @param delay_family Delay family; see [curecfr_families()].
+#' @param delay_family Delay family; see [cfrnow_families()].
 #' @param onset_start First possible onset date.
 #' @param onset_days Width of the onset window (days); onsets are uniform
 #'   over it.

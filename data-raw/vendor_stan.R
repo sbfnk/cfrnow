@@ -1,7 +1,7 @@
 # Vendor the primarycensored Stan functions into inst/stan/include/.
 #
 # Run this whenever primarycensored is updated. It writes a self-contained
-# functions file (with dependencies resolved) that inst/stan/curecfr.stan
+# functions file (with dependencies resolved) that inst/stan/cfrnow.stan
 # #includes, so the package does not depend on the user's installed
 # primarycensored library layout at compile time. Commit the generated file.
 

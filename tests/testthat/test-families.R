@@ -15,7 +15,7 @@ test_that("lognormal mean/sd converts to meanlog/sdlog with the right moments", 
 
 test_that("simulated delays match the requested mean and sd", {
   set.seed(1)
-  for (fam in curecfr_families()) {
+  for (fam in cfrnow_families()) {
     ll <- simulate_linelist(n = 20000, cfr = 1, delay_mean = 12.75,
                             delay_sd = 7, delay_family = fam)
     delay <- as.numeric(ll$death_date - ll$onset_date)

@@ -9,7 +9,7 @@
 ^pkgdown$
 ^codecov\.yml$
 # cmdstanr compiles the model binary next to the .stan file; never ship it
-^inst/stan/curecfr$
-^inst/stan/curecfr\.exe$
+^inst/stan/cfrnow$
+^inst/stan/cfrnow\.exe$
 ^inst/stan/.*\.hpp$
 ^inst/stan/.*\.o$

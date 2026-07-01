@@ -1,8 +1,8 @@
 ---
-title: "Real-time CFR with curecfr"
+title: "Real-time CFR with cfrnow"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Real-time CFR with curecfr}
+  %\VignetteIndexEntry{Real-time CFR with cfrnow}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,14 +19,14 @@ time: recent cases have not yet had time to die. Restricting to cases with a
 **upward** bias, because deaths resolve faster than recoveries, so at any
 mid-outbreak cut-off the resolved set is enriched for deaths.
 
-`curecfr` sidesteps both by never conditioning on resolution. Each case is fatal
+`cfrnow` sidesteps both by never conditioning on resolution. Each case is fatal
 with probability `cfr`; a fatal case dies at an interval-censored onset-to-death
 delay `F`; every case still alive at the cut-off is right-censored, contributing
 the mixture-cure survival term `1 - cfr * F(t)`. Recovery times are not used, so
 the resolved-set enrichment cannot arise.
 
 ```{r setup}
-library(curecfr)
+library(cfrnow)
 ```
 
 ## A line list

@@ -3,6 +3,6 @@
 .RData
 .Ruserdata
 inst/stan/*.exe
-inst/stan/curecfr
+inst/stan/cfrnow
 *.o
 *.hpp

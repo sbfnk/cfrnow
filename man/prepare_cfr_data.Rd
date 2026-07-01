@@ -16,13 +16,14 @@ retrospective fit in which every recorded death counts and survivors are
 treated as fully resolved. In real time, deaths dated after \code{obs_time} are
 treated as not-yet-known and the case is right-censored.}
 
-\item{t0}{Optional time origin (\code{Date}). Defaults to \code{min(onset) - max_delay}.}
+\item{t0}{Optional time origin (\code{Date}). Defaults to
+\code{min(onset) - max_delay}.}
 
 \item{max_delay}{Largest plausible onset-to-death delay (days). Death records
 implying a longer or negative delay are dropped as date-entry errors.}
 }
 \value{
-A \code{curecfr_data} list with the Stan inputs (\code{n_death},
+A \code{cfrnow_data} list with the Stan inputs (\code{n_death},
 \code{death_delay}, \code{death_width}, \code{n_cens}, \code{censor_time}, \code{censor_width},
 \code{n_resolved}) plus \code{n_cases}, \code{n_deaths}, \code{t0} and \code{obs_time}.
 }

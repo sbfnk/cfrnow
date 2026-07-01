@@ -7,7 +7,7 @@
 summarise_cfr(object, probs = c(0.025, 0.5, 0.975), info_tol = 0.9, ...)
 }
 \arguments{
-\item{object}{A \code{curecfr_fit} from \code{\link[=fit_cfr]{fit_cfr()}}.}
+\item{object}{A \code{cfrnow_fit} from \code{\link[=fit_cfr]{fit_cfr()}}.}
 
 \item{probs}{Quantiles to report.}
 
