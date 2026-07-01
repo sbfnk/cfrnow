@@ -74,12 +74,14 @@ model {
   // Fully-resolved non-deaths: the cure component only.
   target += n_resolved * log1m(cfr);
 
-  // Observed deaths: fatal (log cfr) x doubly-interval-censored onset->death.
+  // Observed deaths: each is fatal (log cfr) with a doubly-interval-censored
+  // onset->death delay. The constant log(cfr) is summed once over the n_death
+  // deaths, matching the resolved-case term above.
+  target += n_death * log(cfr);
   for (i in 1:n_death) {
-    target += log(cfr)
-      + primarycensored_lpmf(death_delay[i] | dist_id, params,
-          death_width[i], death_delay[i] + 1.0,
-          0.0, positive_infinity(), primary_id, primary_params);
+    target += primarycensored_lpmf(death_delay[i] | dist_id, params,
+        death_width[i], death_delay[i] + 1.0,
+        0.0, positive_infinity(), primary_id, primary_params);
   }
 
   // Right-censored survivors: mixture-cure survival 1 - cfr * Fbar(t), with

@@ -28,9 +28,50 @@ test_that("impossible onset->death delays are dropped with a warning", {
     onset_date = as.Date(c("2026-01-10", "2026-01-01")),
     death_date = as.Date(c("2026-01-05", "2026-01-08"))  # first: death before onset
   )
-  expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "date-entry")
+  expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
   expect_equal(d$n_deaths, 1L)
   expect_equal(d$n_cases, 1L)         # the bad record is dropped entirely
+})
+
+test_that("missing onset dates are dropped with a warning, not silently kept", {
+  ll <- data.frame(
+    onset_date = as.Date(c("2026-01-01", NA, "2026-01-03")),
+    death_date = as.Date(c("2026-01-10", "2026-01-08", NA))
+  )
+  expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
+  expect_equal(d$n_cases, 2L)         # the NA-onset row is dropped
+  expect_equal(d$n_deaths, 1L)        # not counted as a phantom death
+  expect_false(anyNA(d$death_delay))
+  expect_false(is.na(d$n_cases))
+  expect_false(is.na(d$n_resolved))
+})
+
+test_that("inverted onset windows are dropped rather than producing negative widths", {
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-05"),
+    onset_lower = as.Date("2026-01-05"),
+    onset_upper = as.Date("2026-01-01"),   # upper before lower
+    death_date = as.Date("2026-01-10")
+  )
+  expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
+  expect_equal(d$n_cases, 0L)
+  expect_true(all(d$death_width >= 1))
+})
+
+test_that("cases with onset after the cut-off are excluded with a message", {
+  ll <- data.frame(
+    onset_date = as.Date(c("2026-01-01", "2026-01-20")),  # second onsets post-cutoff
+    death_date = as.Date(c("2026-01-08", NA))
+  )
+  expect_message(d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10")),
+                 "onset after the cut-off")
+  expect_equal(d$n_cases, 1L)
+})
+
+test_that("retrospective obs_time field is a Date, matching real-time mode", {
+  ll <- data.frame(onset_date = as.Date("2026-01-01"),
+                   death_date = as.Date("2026-01-10"))
+  expect_s3_class(prepare_cfr_data(ll, obs_time = NULL)$obs_time, "Date")
 })
 
 test_that("onset windows widen the primary censoring width", {

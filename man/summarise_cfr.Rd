@@ -4,27 +4,37 @@
 \alias{summarise_cfr}
 \title{Summarise a mixture-cure CFR fit}
 \usage{
-summarise_cfr(object, probs = c(0.025, 0.5, 0.975), ...)
+summarise_cfr(object, probs = c(0.025, 0.5, 0.975), info_tol = 0.9, ...)
 }
 \arguments{
 \item{object}{A \code{curecfr_fit} from \code{\link[=fit_cfr]{fit_cfr()}}.}
 
 \item{probs}{Quantiles to report.}
 
+\item{info_tol}{Low-information threshold: flag when the CFR posterior sd is
+more than this fraction of the prior sd. Defaults to 0.9.}
+
 \item{...}{Unused.}
 }
 \value{
 A data frame with one row per summarised quantity (\code{cfr},
-\code{delay_mean}, \code{delay_sd}) and \code{naive_cfr}, \code{n_cases}, \code{n_deaths}
-attributes.
+\code{delay_mean}, \code{delay_sd}), carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths},
+\code{cfr_prior_sd} and \code{cfr_low_information} attributes.
 }
 \description{
 Pools the posterior draws of the corrected CFR and the onset-to-death delay
-(mean and standard deviation, in days) and reports quantile summaries. The
-naive \code{deaths / cases} ratio is returned as an attribute for comparison; in
-real time it underestimates the corrected CFR because not every fatal case
-has died by the cut-off. The delay summaries are family-independent because
-the model is parameterised directly by the delay mean and sd.
+(mean and standard deviation, in days) and reports quantile summaries with
+convergence diagnostics (\code{rhat}, \code{ess_bulk}). The naive \code{deaths / cases}
+ratio is returned as an attribute for comparison; in real time it
+underestimates the corrected CFR because not every fatal case has died by the
+cut-off. The delay summaries are family-independent because the model is
+parameterised directly by the delay mean and sd.
+}
+\details{
+When few deaths have resolved (a young outbreak), the CFR is only weakly
+identified and its posterior stays close to the prior. This is reported via
+the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd exceeds
+\code{info_tol} times the prior sd.
 }
 \examples{
 \dontrun{

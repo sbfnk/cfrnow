@@ -68,21 +68,33 @@ vignette is built.
 ```{r fit, eval = FALSE}
 fit <- fit_cfr(d, delay_family = "gamma")
 summarise_cfr(fit)
-#>     quantity   mean   q2.5    q50  q97.5
-#> 1        cfr  0.579  0.528  0.579  0.625
-#> 2 delay_mean 12.700 11.500 12.700 13.900
-#> 3   delay_sd  7.200  6.300  7.200  8.200
+#>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
+#> 1        cfr  0.579  0.528  0.579  0.625 1.001     3200
+#> 2 delay_mean 12.700 11.500 12.700 13.900 1.000     3400
+#> 3   delay_sd  7.200  6.300  7.200  8.200 1.000     3100
 ```
 
 The corrected CFR (~0.58) recovers the true 0.55 and sits well above the naive
 `r round(naive, 2)`, which is depressed by the many recent, not-yet-resolved
-cases. Pass `obs_time = NULL` to `prepare_cfr_data()` for a retrospective,
-fully-resolved fit, which returns the naive ratio with the delay as a nuisance.
+cases. The summary also carries `rhat`/`ess_bulk` and a `cfr_low_information`
+attribute (see below). Pass `obs_time = NULL` to `prepare_cfr_data()` for a
+retrospective, fully-resolved fit, which returns the naive ratio with the delay
+as a nuisance.
 
-## Notes
+## Assumptions and caveats
 
-- `curecfr_families()` lists the supported onset-to-death delay families.
-- `curecfr_priors()` sets the priors on the delay mean/sd (days) and the CFR.
-- The mixture-cure correction fixes the *timing* bias only. It still assumes
-  deaths are ascertained; under-counted deaths (for example community deaths
-  outside treatment centres) are a separate problem it cannot repair.
+The correction fixes a *timing* bias; it cannot repair the data.
+
+- **Complete death ascertainment.** A death missing from the line list (e.g. a
+  community death outside a treatment centre) is treated as a survivor and
+  biases the CFR down — the dominant risk when ascertainment is ETC-centred.
+- **Deaths known on the day they occur.** Notification lag reintroduces the bias
+  the model removes, via the data rather than the delay; nowcast or caveat the
+  death series if that lag is non-trivial.
+- **Weak identifiability early on.** When few deaths have resolved, the CFR
+  posterior stays close to its prior; `summarise_cfr()` flags this via
+  `cfr_low_information`. Treat a flagged estimate as prior-driven.
+- **Stationary delay and homogeneous CFR.** A pooled CFR lags reality as
+  treatment access scales up; time-varying CFR is future work.
+- **Delay family is chosen, not estimated.** Refit with
+  `delay_family = "lognormal"` to check sensitivity to the tail.

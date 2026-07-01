@@ -82,7 +82,8 @@ fit_cfr <- function(data, delay_family = "gamma", priors = curecfr_priors(),
     init <- function() {
       list(delay_mean = max(stats::rnorm(1, priors$delay_mean_mean,
                                          priors$delay_mean_sd / 2), 1),
-           delay_sd = max(priors$delay_sd_mean, 1),
+           delay_sd = max(stats::rnorm(1, priors$delay_sd_mean,
+                                       priors$delay_sd_sd / 2), 1),
            cfr = stats::rbeta(1, priors$cfr_a, priors$cfr_b))
     }
   }
@@ -102,7 +103,7 @@ fit_cfr <- function(data, delay_family = "gamma", priors = curecfr_priors(),
     seed = seed, init = init, ...
   )
   structure(
-    list(fit = fit, data = data, delay_family = delay_family),
+    list(fit = fit, data = data, delay_family = delay_family, priors = priors),
     class = "curecfr_fit"
   )
 }

@@ -8,6 +8,12 @@
 #' columns are present (defaulting to a one-day window at `onset_date`). Deaths
 #' are recorded to the day.
 #'
+#' Records that cannot be used are dropped with a warning: a missing onset, an
+#' inverted onset window (`onset_upper < onset_lower`), or a death with an
+#' impossible onset-to-death delay (negative, or longer than `max_delay`). In
+#' real time, cases whose onset falls after `obs_time` are not yet known and are
+#' excluded with a message.
+#'
 #' @param linelist A data frame with an `onset_date` column, an optional
 #'   `onset_lower`/`onset_upper` onset window, and a `death_date` column
 #'   (`NA` for cases that have not died). Dates may be `Date` or coercible.
@@ -15,7 +21,7 @@
 #'   retrospective fit in which every recorded death counts and survivors are
 #'   treated as fully resolved. In real time, deaths dated after `obs_time` are
 #'   treated as not-yet-known and the case is right-censored.
-#' @param t0 Optional time origin (`Date`). Defaults to `min(onset) - 60` days.
+#' @param t0 Optional time origin (`Date`). Defaults to `min(onset) - max_delay`.
 #' @param max_delay Largest plausible onset-to-death delay (days). Death records
 #'   implying a longer or negative delay are dropped as date-entry errors.
 #'
@@ -36,44 +42,51 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
          call. = FALSE)
   }
 
+  optional_date_col <- function(col, default) {
+    if (col %in% names(linelist)) as.Date(linelist[[col]]) else default
+  }
   onset <- as.Date(linelist$onset_date)
-  onset_lo <- if ("onset_lower" %in% names(linelist)) {
-    as.Date(linelist$onset_lower)
-  } else {
-    onset
-  }
-  onset_up <- if ("onset_upper" %in% names(linelist)) {
-    as.Date(linelist$onset_upper)
-  } else {
-    onset
-  }
+  onset_lo <- optional_date_col("onset_lower", onset)
+  onset_up <- optional_date_col("onset_upper", onset)
   death <- as.Date(linelist$death_date)
 
-  if (is.null(t0)) t0 <- min(onset, na.rm = TRUE) - 60
+  obs_time <- if (!is.null(obs_time)) as.Date(obs_time)
+  retrospective <- is.null(obs_time)
+  if (is.null(t0)) t0 <- min(onset, na.rm = TRUE) - max_delay
   t0 <- as.Date(t0)
 
   onset_lo_day <- as.numeric(onset_lo - t0)
-  width <- as.numeric(onset_up - onset_lo) + 1        # >= 1 day
-  retrospective <- is.null(obs_time)
-  obs_offset <- if (retrospective) Inf else as.numeric(as.Date(obs_time) - t0)
+  width <- as.numeric(onset_up - onset_lo) + 1        # onset-window width (days)
+  obs_offset <- if (retrospective) Inf else as.numeric(obs_time - t0)
 
   death_day <- as.numeric(death - t0)                 # NA for non-fatal
   is_death <- !is.na(death_day) & death_day <= obs_offset
   delay <- death_day - onset_lo_day                   # from onset-window start
 
-  # Drop impossible onset->death delays (date-entry errors) among the deaths.
-  bad <- is_death & (delay < 0 | delay > max_delay)
-  n_dropped <- sum(bad, na.rm = TRUE)
+  # Unusable / erroneous records: missing onset, inverted onset window, or a
+  # death with an impossible onset->death delay. Guards keep `bad` free of NA.
+  bad <- is.na(onset_lo_day) | is.na(width) | width < 1 |
+    (is_death & !is.na(delay) & (delay < 0 | delay > max_delay))
+  n_dropped <- sum(bad)
   if (n_dropped > 0) {
-    warning(sprintf("dropped %d onset->death date-entry error(s)", n_dropped),
-            call. = FALSE)
+    warning(n_dropped, " unusable record(s) dropped (missing onset, inverted ",
+            "onset window, or impossible onset-to-death delay)", call. = FALSE)
   }
-  keep <- !bad
+
+  # Real-time: a case whose onset window opens after the cut-off is not yet
+  # known, so exclude it rather than let it inflate the case count.
+  future <- !retrospective & !is.na(onset_lo_day) & onset_lo_day > obs_offset
+  n_future <- sum(future & !bad)
+  if (n_future > 0) {
+    message(n_future, " case(s) with onset after the cut-off excluded")
+  }
+
+  keep <- !bad & !future
   is_death <- is_death & keep
   is_surv <- keep & !is_death
 
   death_delay <- as.integer(round(delay[is_death]))
-  death_width <- as.numeric(width[is_death])
+  death_width <- width[is_death]
 
   if (retrospective) {
     n_resolved <- sum(is_surv)
@@ -82,7 +95,7 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
   } else {
     n_resolved <- 0L
     censor_time <- pmax(obs_offset - onset_lo_day[is_surv], 0)
-    censor_width <- as.numeric(width[is_surv])
+    censor_width <- width[is_surv]
   }
 
   structure(
@@ -91,13 +104,13 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
       death_delay = death_delay,
       death_width = death_width,
       n_cens = length(censor_time),
-      censor_time = as.numeric(censor_time),
+      censor_time = censor_time,
       censor_width = censor_width,
-      n_resolved = as.integer(n_resolved),
+      n_resolved = n_resolved,
       n_cases = sum(keep),
       n_deaths = length(death_delay),
       t0 = t0,
-      obs_time = if (retrospective) NA else as.Date(obs_time)
+      obs_time = if (retrospective) as.Date(NA) else obs_time
     ),
     class = "curecfr_data"
   )

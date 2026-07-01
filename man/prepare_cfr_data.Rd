@@ -16,7 +16,7 @@ retrospective fit in which every recorded death counts and survivors are
 treated as fully resolved. In real time, deaths dated after \code{obs_time} are
 treated as not-yet-known and the case is right-censored.}
 
-\item{t0}{Optional time origin (\code{Date}). Defaults to \code{min(onset) - 60} days.}
+\item{t0}{Optional time origin (\code{Date}). Defaults to \code{min(onset) - max_delay}.}
 
 \item{max_delay}{Largest plausible onset-to-death delay (days). Death records
 implying a longer or negative delay are dropped as date-entry errors.}
@@ -35,6 +35,12 @@ fully-resolved non-death, and returns the pieces \code{\link[=fit_cfr]{fit_cfr()
 Onset is taken over the day-window \verb{[onset_lower, onset_upper]} when those
 columns are present (defaulting to a one-day window at \code{onset_date}). Deaths
 are recorded to the day.
+
+Records that cannot be used are dropped with a warning: a missing onset, an
+inverted onset window (\code{onset_upper < onset_lower}), or a death with an
+impossible onset-to-death delay (negative, or longer than \code{max_delay}). In
+real time, cases whose onset falls after \code{obs_time} are not yet known and are
+excluded with a message.
 }
 \examples{
 ll <- simulate_linelist(n = 50)

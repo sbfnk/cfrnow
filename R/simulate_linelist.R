@@ -26,11 +26,11 @@ simulate_linelist <- function(n = 200, cfr = 0.5,
   onset <- as.Date(onset_start) + sample.int(onset_days, n, replace = TRUE) - 1
   fatal <- stats::runif(n) < cfr
   otd <- switch(
-    match.arg(delay_family, curecfr_families()),
+    validate_family(delay_family),
     lognormal = stats::rlnorm(n, native[["meanlog"]], native[["sdlog"]]),
     gamma = stats::rgamma(n, shape = native[["shape"]], rate = native[["rate"]])
   )
-  death_date <- as.Date(rep(NA_real_, n), origin = "1970-01-01")
+  death_date <- as.Date(rep(NA, n))
   death_date[fatal] <- onset[fatal] + round(otd[fatal])
   data.frame(onset_date = onset, death_date = death_date)
 }

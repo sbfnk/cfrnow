@@ -17,6 +17,20 @@ test_that("retrospective fit recovers a known CFR", {
   expect_lt(cfr_row[["q2.5"]], 0.45)
 })
 
+test_that("summary carries convergence diagnostics and identifiability flag", {
+  skip_if_no_cmdstan()
+  set.seed(3)
+  ll <- simulate_linelist(n = 500, cfr = 0.5)
+  d <- prepare_cfr_data(ll, obs_time = NULL)
+  fit <- fit_cfr(d, chains = 2, parallel_chains = 2,
+                 iter_warmup = 500, iter_sampling = 500, refresh = 0)
+  s <- summarise_cfr(fit)
+  expect_true(all(c("rhat", "ess_bulk") %in% names(s)))
+  expect_true(all(s$rhat < 1.05))                       # well-mixed on ample data
+  expect_false(is.null(attr(s, "cfr_low_information")))
+  expect_false(attr(s, "cfr_low_information"))           # 500 cases: informative
+})
+
 test_that("real-time correction lifts the estimate above the naive ratio", {
   skip_if_no_cmdstan()
   set.seed(2)

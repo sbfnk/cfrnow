@@ -46,6 +46,40 @@ Your line list needs an `onset_date` column and a `death_date` column (`NA` for
 cases that have not died); optional `onset_lower`/`onset_upper` give an onset
 window that widens the primary censoring.
 
+`summarise_cfr()` reports `rhat`/`ess_bulk` and flags (`cfr_low_information`)
+when the CFR posterior has barely moved from its prior — which is expected early
+in an outbreak, when few deaths have resolved and the CFR is only weakly
+identified. Treat a flagged estimate as prior-driven.
+
+## Assumptions and caveats
+
+The correction fixes a *timing* bias; it cannot repair the data. Read these
+before quoting a number:
+
+- **Complete death ascertainment.** A death that never reaches the line list
+  (for example a community death outside a treatment centre) is silently
+  treated as a survivor, biasing the CFR **down**. In an outbreak where
+  ascertainment is ETC-centred this is the single biggest threat to validity.
+- **Deaths known on their day of occurrence.** The model assumes a death enters
+  the data when it happens. Real notification lag reintroduces the very bias the
+  model exists to remove, through the data pipeline rather than the delay —
+  nowcast or caveat the death series if that lag is non-trivial.
+- **A single, stationary onset-to-death delay and a single, homogeneous CFR**
+  over the whole outbreak. As treatment access (supportive care, monoclonals)
+  scales up, the true CFR should fall, and a pooled estimate lags reality
+  precisely when that matters. Time-varying CFR is on the roadmap below.
+- **Delay family is chosen, not estimated.** Gamma and lognormal differ in tail
+  weight, which affects how quickly a recent case counts as "probably cured".
+  With sparse data the family is not identifiable from the line list, so check
+  sensitivity by refitting with `delay_family = "lognormal"`.
+
+## Roadmap
+
+Known gaps, roughly in priority order: time-varying `cfr` (e.g. a random walk on
+`logit(cfr)`); a death-reporting-delay nowcasting layer; optionally using
+recovery times in a competing-risks formulation (or documenting why not);
+stratification (age, sex, vaccination); and posterior-predictive checks.
+
 ## Status
 
 Early but functional. The model, data preparation, summaries, a vignette and
