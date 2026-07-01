@@ -3,6 +3,11 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.github$
+^\.lintr$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^codecov\.yml$
 # cmdstanr compiles the model binary next to the .stan file; never ship it
 ^inst/stan/curecfr$
 ^inst/stan/curecfr\.exe$

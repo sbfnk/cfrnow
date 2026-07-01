@@ -8,7 +8,8 @@
 #' `Beta(6.6, 13.4)` CFR prior (mean ~= 0.33). The delay mean and sd carry
 #' half-normal priors (truncated at zero).
 #'
-#' @param delay_mean_mean,delay_mean_sd Half-normal prior on the delay mean (days).
+#' @param delay_mean_mean,delay_mean_sd Half-normal prior on the delay mean
+#'   (days).
 #' @param delay_sd_mean,delay_sd_sd Half-normal prior on the delay sd (days).
 #' @param cfr_a,cfr_b Beta prior on the case fatality ratio.
 #' @return A named list of prior hyperparameters for [fit_cfr()].
@@ -93,7 +94,9 @@ fit_cfr <- function(data, delay_family = "gamma", priors = curecfr_priors(),
            "n_cens", "censor_time", "censor_width", "n_resolved")],
     list(
       dist_id = dist_id,
-      primary_id = primarycensored::pcd_stan_dist_id("uniform", type = "primary")
+      primary_id = primarycensored::pcd_stan_dist_id(
+        "uniform", type = "primary"
+      )
     ),
     priors
   )

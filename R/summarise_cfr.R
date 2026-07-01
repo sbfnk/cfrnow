@@ -49,16 +49,17 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
   qrow <- function(name) {
     m <- posterior::extract_variable_matrix(draws, name)  # iterations x chains
     x <- as.numeric(m)
-    q <- stats::quantile(x, probs = probs, names = FALSE)
+    qv <- stats::quantile(x, probs = probs, names = FALSE)
     data.frame(quantity = name, mean = mean(x),
-               stats::setNames(as.list(q), qcols),
+               stats::setNames(as.list(qv), qcols),
                rhat = posterior::rhat(m),
                ess_bulk = posterior::ess_bulk(m),
                check.names = FALSE)
   }
   out <- do.call(rbind, lapply(vars, qrow))
 
-  cfr_post_sd <- stats::sd(as.numeric(posterior::extract_variable(draws, "cfr")))
+  cfr_draws <- as.numeric(posterior::extract_variable(draws, "cfr"))
+  cfr_post_sd <- stats::sd(cfr_draws)
   cfr_prior_sd <- beta_sd(object$priors$cfr_a, object$priors$cfr_b)
 
   attr(out, "naive_cfr") <- naive_cfr(object$data)

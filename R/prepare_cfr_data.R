@@ -21,7 +21,8 @@
 #'   retrospective fit in which every recorded death counts and survivors are
 #'   treated as fully resolved. In real time, deaths dated after `obs_time` are
 #'   treated as not-yet-known and the case is right-censored.
-#' @param t0 Optional time origin (`Date`). Defaults to `min(onset) - max_delay`.
+#' @param t0 Optional time origin (`Date`). Defaults to
+#'   `min(onset) - max_delay`.
 #' @param max_delay Largest plausible onset-to-death delay (days). Death records
 #'   implying a longer or negative delay are dropped as date-entry errors.
 #'
@@ -56,7 +57,7 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
   t0 <- as.Date(t0)
 
   onset_lo_day <- as.numeric(onset_lo - t0)
-  width <- as.numeric(onset_up - onset_lo) + 1        # onset-window width (days)
+  width <- as.numeric(onset_up - onset_lo) + 1   # onset-window width, days
   obs_offset <- if (retrospective) Inf else as.numeric(obs_time - t0)
 
   death_day <- as.numeric(death - t0)                 # NA for non-fatal

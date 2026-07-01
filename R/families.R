@@ -21,7 +21,9 @@ validate_family <- function(delay_family) {
 
 # Validate a family name and return its primarycensored delay dist_id.
 delay_dist_id <- function(delay_family) {
-  primarycensored::pcd_stan_dist_id(validate_family(delay_family), type = "delay")
+  primarycensored::pcd_stan_dist_id(
+    validate_family(delay_family), type = "delay"
+  )
 }
 
 # Convert a delay (mean, sd) to a family's native (p1, p2), mirroring the Stan

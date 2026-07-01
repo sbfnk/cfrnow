@@ -1,0 +1,19 @@
+url: ~
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Prepare and fit
+  contents:
+  - prepare_cfr_data
+  - fit_cfr
+  - curecfr_model
+  - curecfr_priors
+- title: Summarise
+  contents:
+  - summarise_cfr
+- title: Families and simulation
+  contents:
+  - curecfr_families
+  - simulate_linelist

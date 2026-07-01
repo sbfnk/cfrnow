@@ -1,5 +1,11 @@
 # curecfr
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/sbfnk/curecfr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sbfnk/curecfr/actions/workflows/R-CMD-check.yaml)
+[![codecov](https://codecov.io/gh/sbfnk/curecfr/branch/main/graph/badge.svg)](https://app.codecov.io/gh/sbfnk/curecfr)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
 Real-time case fatality ratio (CFR) estimation from line-list data, using a
 Bayesian **mixture-cure survival model**. It is the R counterpart of the CFR
 component of the Julia

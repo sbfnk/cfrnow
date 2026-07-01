@@ -1,0 +1,71 @@
+# For help debugging build failures open an issue on posit community with the
+# 'github-actions' tag. https://forum.posit.co/
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '5 4 * * 1'
+  workflow_dispatch:
+
+name: R-CMD-check
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  R-CMD-check:
+    if: "! contains(github.event.head_commit.message, '[ci skip]')"
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macOS-latest, r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'oldrel-1'}
+          - {os: ubuntu-latest, r: 'devel'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: true
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+          extra-repositories: https://stan-dev.r-universe.dev
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rcmdcheck
+            any::cmdstanr
+          needs: check
+
+      # cmdstanr needs a CmdStan toolchain to compile the model at test time.
+      # Not available on Windows here; the Stan-backed tests skip themselves
+      # when CmdStan is absent (see tests/testthat/test-fit_cfr.R).
+      - name: Install cmdstan
+        if: runner.os != 'Windows'
+        uses: epinowcast/actions/install-cmdstan@v1
+        with:
+          cmdstan-version: 'latest'
+          num-cores: 2
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
