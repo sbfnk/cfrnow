@@ -31,6 +31,20 @@ recovered case is counted as a resolved non-fatal, which tightens the estimate.
 library(cfrnow)
 ```
 
+## Choosing the model
+
+Which model `fit_cfr()` runs is set by the data you have:
+
+- With onset and death dates only, you get the default death-only fit:
+  unresolved cases are censored and recoveries are left unmodelled.
+- If you also have reliable recovery dates, pass a `recovery_delay` and the fit
+  uses their timing (the competing-risks model).
+- If you already trust an onset-to-death delay from elsewhere and the data are
+  thin, fix that delay so only `cfr` is estimated (the Ghani/Nishiura estimator).
+
+`obs_time` is a separate choice: a date gives a real-time cut-off; `NULL` gives a
+retrospective fit, where every case has resolved.
+
 ## A line list
 
 Your line list needs an `onset_date` and a `death_date` (`NA` for cases that
@@ -118,7 +132,7 @@ c(deaths = dr$n_death, recoveries = dr$n_recovery, censored = dr$n_cens)
 
 By default the recovery timing is ignored: a recovered case contributes only the
 cure factor `1 - cfr`. Pass a `recovery_delay` to fit the competing-risks model,
-which uses *when* each case recovered — a recovered case contributes
+which uses *when* each case recovered: a recovered case contributes
 `(1 - cfr) * f_R(r)`, and an unresolved case at time `t` contributes
 `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`:
 

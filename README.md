@@ -66,6 +66,11 @@ fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                # fix
 fit_cfr(d, recovery_delay = default_recovery_delay())  # competing risks (recovery timing)
 ```
 
+Which of these to use follows from your data: onset and death dates give the
+default death-only fit; reliable recovery dates let you add a `recovery_delay`
+for the competing-risks fit; and a delay you trust from elsewhere can be fixed
+for the Ghani/Nishiura estimator.
+
 Your line list needs an `onset_date` column and a `death_date` column (`NA` for
 cases that have not died). Optional columns: `onset_lower`/`onset_upper` give an
 onset window that widens the primary censoring, and `recovery_date` marks a
