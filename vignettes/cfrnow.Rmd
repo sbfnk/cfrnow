@@ -21,9 +21,11 @@ mid-outbreak cut-off the resolved set is enriched for deaths.
 
 `cfrnow` sidesteps both by never conditioning on resolution. Each case is fatal
 with probability `cfr`; a fatal case dies at an interval-censored onset-to-death
-delay `F`; every case still alive at the cut-off is right-censored, contributing
-the mixture-cure survival term `1 - cfr * F(t)`. Recovery times are not used, so
-the resolved-set enrichment cannot arise.
+delay `F`; every case still unresolved at the cut-off is right-censored,
+contributing the mixture-cure survival term `1 - cfr * F(t)`. Because unresolved
+cases are censored rather than dropped, the `deaths / (deaths + recoveries)`
+enrichment cannot arise. Recovery dates aren't required, but when recorded a
+recovered case is counted as a resolved non-fatal, which tightens the estimate.
 
 ```{r setup}
 library(cfrnow)
@@ -33,8 +35,9 @@ library(cfrnow)
 
 Your line list needs an `onset_date` and a `death_date` (`NA` for cases that
 have not died); an optional `onset_lower`/`onset_upper` window widens the onset
-censoring. Here we simulate one with a known CFR of 0.55 sampled part-way
-through a growing epidemic.
+censoring, and an optional `recovery_date` marks a non-fatal recovery so that
+case is treated as resolved rather than censored. Here we simulate one with a
+known CFR of 0.55 sampled part-way through a growing epidemic.
 
 ```{r simulate}
 set.seed(1)

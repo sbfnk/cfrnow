@@ -84,3 +84,38 @@ test_that("onset windows widen the primary censoring width", {
   d <- prepare_cfr_data(ll, obs_time = NULL)
   expect_equal(d$death_width, 4)      # (upper - lower) + 1
 })
+
+test_that("recovered-by-cutoff cases are resolved, not censored (real-time)", {
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-01") + c(0, 1, 2),
+    death_date = as.Date(c("2026-01-05", NA, NA)),
+    recovery_date = as.Date(c(NA, "2026-01-08", NA))  # case 2 recovered by cut-off
+  )
+  d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
+  expect_equal(d$n_deaths, 1L)     # case 1 died
+  expect_equal(d$n_resolved, 1L)   # case 2 recovered -> resolved
+  expect_equal(d$n_cens, 1L)       # case 3 still unresolved -> censored
+})
+
+test_that("recovery_date absent reproduces the censor-everything behaviour", {
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-01") + c(0, 1),
+    death_date = as.Date(c(NA, NA))
+  )
+  d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
+  expect_equal(d$n_resolved, 0L)   # no recovery info -> both censored
+  expect_equal(d$n_cens, 2L)
+})
+
+test_that("a recovery before onset is dropped as unusable", {
+  ll <- data.frame(
+    onset_date = as.Date(c("2026-01-10", "2026-01-01")),
+    death_date = as.Date(c(NA, NA)),
+    recovery_date = as.Date(c("2026-01-05", "2026-01-09"))  # case 1: recovers pre-onset
+  )
+  expect_warning(
+    d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-15")), "unusable"
+  )
+  expect_equal(d$n_cases, 1L)      # bad record dropped
+  expect_equal(d$n_resolved, 1L)   # case 2 is a valid recovery
+})

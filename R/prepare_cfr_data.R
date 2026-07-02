@@ -1,26 +1,34 @@
 #' Build model inputs from a line list
 #'
 #' Classifies each case at an observation cut-off into an observed death (with
-#' an interval-censored onset-to-death delay), a right-censored survivor, or a
-#' fully-resolved non-death, and returns the pieces [fit_cfr()] passes to Stan.
+#' an interval-censored onset-to-death delay), a resolved non-death, or a
+#' right-censored survivor still unresolved at the cut-off, and returns the
+#' pieces [fit_cfr()] passes to Stan. A case counts as resolved non-death if it
+#' has a `recovery_date` on or before the cut-off (or, in a retrospective fit,
+#' if it simply never died); such a case contributes the cure term rather than
+#' being censored, so recording recoveries tightens the estimate.
 #'
 #' Onset is taken over the day-window `[onset_lower, onset_upper]` when those
 #' columns are present (defaulting to a one-day window at `onset_date`). Deaths
-#' are recorded to the day.
+#' and recoveries are recorded to the day.
 #'
 #' Records that cannot be used are dropped with a warning: a missing onset, an
-#' inverted onset window (`onset_upper < onset_lower`), or a death with an
-#' impossible onset-to-death delay (negative, or longer than `max_delay`). In
-#' real time, cases whose onset falls after `obs_time` are not yet known and are
-#' excluded with a message.
+#' inverted onset window (`onset_upper < onset_lower`), a death with an
+#' impossible onset-to-death delay (negative, or longer than `max_delay`), or a
+#' recovery dated before onset. In real time, cases whose onset falls after
+#' `obs_time` are not yet known and are excluded with a message.
 #'
 #' @param linelist A data frame with an `onset_date` column, an optional
-#'   `onset_lower`/`onset_upper` onset window, and a `death_date` column
-#'   (`NA` for cases that have not died). Dates may be `Date` or coercible.
+#'   `onset_lower`/`onset_upper` onset window, a `death_date` column (`NA` for
+#'   cases that have not died), and an optional `recovery_date` column (`NA`
+#'   unless the case is a recorded non-fatal recovery). Dates may be `Date` or
+#'   coercible.
 #' @param obs_time Real-time cut-off (`Date` or coercible), or `NULL` for a
 #'   retrospective fit in which every recorded death counts and survivors are
-#'   treated as fully resolved. In real time, deaths dated after `obs_time` are
-#'   treated as not-yet-known and the case is right-censored.
+#'   treated as fully resolved. In real time, a case with a recovery on or
+#'   before `obs_time` is resolved; one still alive and unresolved is
+#'   right-censored; and a death dated after `obs_time` is treated as
+#'   not-yet-known (right-censored).
 #' @param t0 Optional time origin (`Date`). Defaults to
 #'   `min(onset) - max_delay`.
 #' @param max_delay Largest plausible onset-to-death delay (days). Death records
@@ -50,6 +58,8 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
   onset_lo <- optional_date_col("onset_lower", onset)
   onset_up <- optional_date_col("onset_upper", onset)
   death <- as.Date(linelist$death_date)
+  no_recovery <- as.Date(rep(NA, nrow(linelist)))
+  recovery <- optional_date_col("recovery_date", no_recovery)
 
   obs_time <- if (!is.null(obs_time)) as.Date(obs_time)
   retrospective <- is.null(obs_time)
@@ -63,15 +73,21 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
   death_day <- as.numeric(death - t0)                 # NA for non-fatal
   is_death <- !is.na(death_day) & death_day <= obs_offset
   delay <- death_day - onset_lo_day                   # from onset-window start
+  # Recovered by the cut-off (and not a death by the cut-off) = resolved.
+  recovery_day <- as.numeric(recovery - t0)
+  recovered <- !is.na(recovery_day) & recovery_day <= obs_offset & !is_death
 
-  # Unusable / erroneous records: missing onset, inverted onset window, or a
-  # death with an impossible onset->death delay. Guards keep `bad` free of NA.
+  # Unusable / erroneous records: missing onset, inverted onset window, a death
+  # with an impossible onset->death delay, or a recovery before onset. Guards
+  # keep `bad` free of NA.
   bad <- is.na(onset_lo_day) | is.na(width) | width < 1 |
-    (is_death & !is.na(delay) & (delay < 0 | delay > max_delay))
+    (is_death & !is.na(delay) & (delay < 0 | delay > max_delay)) |
+    (recovered & recovery_day < onset_lo_day)
   n_dropped <- sum(bad)
   if (n_dropped > 0) {
-    warning(n_dropped, " unusable record(s) dropped (missing onset, inverted ",
-            "onset window, or impossible onset-to-death delay)", call. = FALSE)
+    warning(n_dropped, " unusable record(s) dropped ",
+            "(missing onset, inverted window, bad onset-to-death delay, ",
+            "or recovery before onset)", call. = FALSE)
   }
 
   # Real-time: a case whose onset window opens after the cut-off is not yet
@@ -84,19 +100,23 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
 
   keep <- !bad & !future
   is_death <- is_death & keep
-  is_surv <- keep & !is_death
+  recovered <- recovered & keep
+  is_surv <- keep & !is_death        # every kept non-death
 
   death_delay <- as.integer(round(delay[is_death]))
   death_width <- width[is_death]
 
   if (retrospective) {
+    # Every non-death is fully resolved.
     n_resolved <- sum(is_surv)
     censor_time <- numeric(0)
     censor_width <- numeric(0)
   } else {
-    n_resolved <- 0L
-    censor_time <- pmax(obs_offset - onset_lo_day[is_surv], 0)
-    censor_width <- width[is_surv]
+    # Recovered-by-cut-off cases are resolved; the rest are right-censored.
+    n_resolved <- sum(recovered)
+    cens <- is_surv & !recovered
+    censor_time <- pmax(obs_offset - onset_lo_day[cens], 0)
+    censor_width <- width[cens]
   }
 
   structure(

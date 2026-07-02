@@ -26,8 +26,11 @@ delay `F`; every case still alive at the cut-off is right-censored,
 contributing the mixture-cure survival term `1 - cfr * F(t)`, the probability
 that it is either non-fatal or fatal but not yet resolved. With `F` fixed this is
 the Ghani/Nishiura `deaths / sum_i F(t_i)` estimator; here `F` is co-estimated
-and its uncertainty propagated. Recovery times are not needed, so the
-resolved-set enrichment bias cannot arise.
+and its uncertainty propagated. The enrichment bias is avoided by never
+conditioning on resolution: unresolved cases are right-censored, not dropped. So
+cfrnow needs only death timing and who is still a case, and does not depend on
+recovery dates being recorded — though it uses them when they are, since a
+recovered case is a resolved non-fatal (`1 - cfr`) that tightens the estimate.
 
 Onset dates are interval-censored and, in real-time mode, `F` is
 right-truncated at the cut-off. Both are handled by the analytical censored-CDF
@@ -62,8 +65,9 @@ fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                # fix
 ```
 
 Your line list needs an `onset_date` column and a `death_date` column (`NA` for
-cases that have not died); optional `onset_lower`/`onset_upper` give an onset
-window that widens the primary censoring.
+cases that have not died). Optional columns: `onset_lower`/`onset_upper` give an
+onset window that widens the primary censoring, and `recovery_date` marks a
+non-fatal recovery so that case is treated as resolved rather than censored.
 
 `summarise_cfr()` reports `rhat`/`ess_bulk` and flags (`cfr_low_information`)
 when the CFR posterior has barely moved from its prior. That is expected early

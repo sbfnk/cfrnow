@@ -8,13 +8,17 @@ prepare_cfr_data(linelist, obs_time = NULL, t0 = NULL, max_delay = 60)
 }
 \arguments{
 \item{linelist}{A data frame with an \code{onset_date} column, an optional
-\code{onset_lower}/\code{onset_upper} onset window, and a \code{death_date} column
-(\code{NA} for cases that have not died). Dates may be \code{Date} or coercible.}
+\code{onset_lower}/\code{onset_upper} onset window, a \code{death_date} column (\code{NA} for
+cases that have not died), and an optional \code{recovery_date} column (\code{NA}
+unless the case is a recorded non-fatal recovery). Dates may be \code{Date} or
+coercible.}
 
 \item{obs_time}{Real-time cut-off (\code{Date} or coercible), or \code{NULL} for a
 retrospective fit in which every recorded death counts and survivors are
-treated as fully resolved. In real time, deaths dated after \code{obs_time} are
-treated as not-yet-known and the case is right-censored.}
+treated as fully resolved. In real time, a case with a recovery on or
+before \code{obs_time} is resolved; one still alive and unresolved is
+right-censored; and a death dated after \code{obs_time} is treated as
+not-yet-known (right-censored).}
 
 \item{t0}{Optional time origin (\code{Date}). Defaults to
 \code{min(onset) - max_delay}.}
@@ -29,19 +33,23 @@ A \code{cfrnow_data} list with the Stan inputs (\code{n_death},
 }
 \description{
 Classifies each case at an observation cut-off into an observed death (with
-an interval-censored onset-to-death delay), a right-censored survivor, or a
-fully-resolved non-death, and returns the pieces \code{\link[=fit_cfr]{fit_cfr()}} passes to Stan.
+an interval-censored onset-to-death delay), a resolved non-death, or a
+right-censored survivor still unresolved at the cut-off, and returns the
+pieces \code{\link[=fit_cfr]{fit_cfr()}} passes to Stan. A case counts as resolved non-death if it
+has a \code{recovery_date} on or before the cut-off (or, in a retrospective fit,
+if it simply never died); such a case contributes the cure term rather than
+being censored, so recording recoveries tightens the estimate.
 }
 \details{
 Onset is taken over the day-window \verb{[onset_lower, onset_upper]} when those
 columns are present (defaulting to a one-day window at \code{onset_date}). Deaths
-are recorded to the day.
+and recoveries are recorded to the day.
 
 Records that cannot be used are dropped with a warning: a missing onset, an
-inverted onset window (\code{onset_upper < onset_lower}), or a death with an
-impossible onset-to-death delay (negative, or longer than \code{max_delay}). In
-real time, cases whose onset falls after \code{obs_time} are not yet known and are
-excluded with a message.
+inverted onset window (\code{onset_upper < onset_lower}), a death with an
+impossible onset-to-death delay (negative, or longer than \code{max_delay}), or a
+recovery dated before onset. In real time, cases whose onset falls after
+\code{obs_time} are not yet known and are excluded with a message.
 }
 \examples{
 ll <- simulate_linelist(n = 50)
