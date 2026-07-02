@@ -13,3 +13,6 @@
 ^inst/stan/cfrnow\.exe$
 ^inst/stan/.*\.hpp$
 ^inst/stan/.*\.o$
+
+^README\.Rmd$
+^README\.html$

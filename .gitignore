@@ -6,3 +6,5 @@ inst/stan/*.exe
 inst/stan/cfrnow
 *.o
 *.hpp
+
+README.html
