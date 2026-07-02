@@ -12,6 +12,8 @@ Description: Estimates a real-time case fatality ratio (CFR) from line-list data
     cases ratio in real time. The onset-to-death delay is co-estimated using
     the primarycensored analytical censored-distribution machinery.
 License: MIT + file LICENSE
+URL: https://sbfnk.github.io/cfrnow/, https://github.com/sbfnk/cfrnow
+BugReports: https://github.com/sbfnk/cfrnow/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
