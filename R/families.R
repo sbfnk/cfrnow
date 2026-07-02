@@ -18,6 +18,17 @@ validate_family <- function(delay_family) {
   match.arg(delay_family, cfrnow_families())
 }
 
+# Draw n delays (days) from a family parameterised by its mean and sd, used by
+# simulate_linelist() for both onset-to-death and onset-to-recovery delays.
+sample_delay <- function(n, mean, sd, delay_family) {
+  native <- delay_to_native(mean, sd, delay_family)
+  switch(
+    validate_family(delay_family),
+    lognormal = stats::rlnorm(n, native[["meanlog"]], native[["sdlog"]]),
+    gamma = stats::rgamma(n, shape = native[["shape"]], rate = native[["rate"]])
+  )
+}
+
 # Convert a delay (mean, sd) to a family's native parameters, for
 # simulate_linelist() so simulations match the family the model fits.
 delay_to_native <- function(mean, sd, delay_family) {

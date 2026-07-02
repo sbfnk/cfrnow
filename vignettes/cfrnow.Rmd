@@ -86,6 +86,27 @@ attribute (see below). Pass `obs_time = NULL` to `prepare_cfr_data()` for a
 retrospective, fully-resolved fit, which returns the naive ratio with the delay
 as a nuisance.
 
+## Using recovery dates
+
+If your line list records when non-fatal cases recovered, add a `recovery_date`
+column. A case recovered by the cut-off is then counted as a resolved non-death
+rather than right-censored, so the fit uses more information. Here we simulate
+recoveries (which resolve more slowly than deaths, mean 21 vs 12.75 days):
+
+```{r recovery}
+set.seed(2)
+llr <- simulate_linelist(n = 500, cfr = 0.55, recovery = TRUE,
+                         delay_mean = 12.75, delay_sd = 7,
+                         recovery_mean = 21, recovery_sd = 9, onset_days = 45)
+dr <- prepare_cfr_data(llr, obs_time = max(llr$onset_date) - 3)
+c(deaths = dr$n_deaths, resolved = dr$n_resolved, censored = dr$n_cens)
+```
+
+Without the `recovery_date` column those recovered cases would all be censored
+(`resolved = 0`). Counting them as resolved sharpens the posterior for `cfr`,
+because a recovered case is known to be non-fatal rather than possibly
+fatal-but-not-yet-resolved.
+
 ## Assumptions and caveats
 
 The correction fixes a *timing* bias; it cannot repair the data.

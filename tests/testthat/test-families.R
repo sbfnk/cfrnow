@@ -24,6 +24,16 @@ test_that("simulated delays match the requested mean and sd", {
   }
 })
 
+test_that("recovery = TRUE adds recoveries for non-fatal cases only", {
+  set.seed(1)
+  ll <- simulate_linelist(n = 300, cfr = 0.5, recovery = TRUE)
+  expect_true("recovery_date" %in% names(ll))
+  fatal <- !is.na(ll$death_date)
+  expect_true(all(is.na(ll$recovery_date[fatal])))     # fatal: no recovery
+  expect_true(all(!is.na(ll$recovery_date[!fatal])))   # non-fatal: recovered
+  expect_false("recovery_date" %in% names(simulate_linelist(n = 5)))  # off by default
+})
+
 test_that("unsupported families are rejected", {
   expect_error(delay_to_native(10, 5, "weibull"))
   expect_error(delay_native_order("weibull"))
