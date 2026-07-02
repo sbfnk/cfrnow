@@ -11,10 +11,9 @@ A character vector of supported family names.
 }
 \description{
 The families \code{cfrnow} can fit, each an analytical primarycensored delay
-distribution paired with a uniform primary event and parameterised here by
-its mean and standard deviation. Weibull is analytically available in
-primarycensored but not yet wired into the mean/sd conversion, so it is
-excluded here.
+distribution paired with a uniform primary event. These match the dist.spec
+constructors accepted by \code{\link[=fit_cfr]{fit_cfr()}}'s \code{delay} argument
+(\code{\link[dist.spec:LogNormal]{dist.spec::LogNormal()}}, \code{\link[dist.spec:Gamma]{dist.spec::Gamma()}}).
 }
 \examples{
 cfrnow_families()

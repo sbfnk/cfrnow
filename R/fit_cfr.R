@@ -1,27 +1,85 @@
-#' Priors for the mixture-cure CFR model
+#' Default onset-to-death delay specification
 #'
-#' Priors are placed on the interpretable onset-to-death delay **mean** and
-#' **standard deviation** (in days) and on the CFR, so they do not depend on the
-#' chosen delay family. Defaults are the BDBV/Ebolavirus values used by the
-#' Julia reference model: an onset-to-death delay centred on the Isiro 2012
-#' line-list reanalysis (mean ~= 12.75 d, sd ~= 7 d) and an EVD/BDBV
-#' `Beta(6.6, 13.4)` CFR prior (mean ~= 0.33). The delay mean and sd carry
-#' half-normal priors (truncated at zero).
+#' A [dist.spec::LogNormal()] with `Normal()` priors on the native parameters,
+#' reproducing the BDBV/Ebolavirus onset-to-death prior of the Julia reference
+#' model (the Isiro 2012 line-list reanalysis): `meanlog ~ Normal(2.41, 0.2)`,
+#' `sdlog ~ Normal(0.51, 0.15)` (delay mean ~= 12.75 d, sd ~= 7 d).
 #'
-#' @param delay_mean_mean,delay_mean_sd Half-normal prior on the delay mean
-#'   (days).
-#' @param delay_sd_mean,delay_sd_sd Half-normal prior on the delay sd (days).
-#' @param cfr_a,cfr_b Beta prior on the case fatality ratio.
-#' @return A named list of prior hyperparameters for [fit_cfr()].
+#' Supply your own [dist.spec::LogNormal()] or [dist.spec::Gamma()] to
+#' [fit_cfr()] to change the family or priors. Give each native parameter as a
+#' `Normal()` to co-estimate it, or as a fixed number / [dist.spec::Fixed()] to
+#' hold it fixed (fixing the whole delay gives the Ghani/Nishiura estimator).
+#'
+#' @return A `dist_spec` for the onset-to-death delay.
 #' @examples
-#' cfrnow_priors(delay_mean_mean = 10)
+#' default_delay()
 #' @export
-cfrnow_priors <- function(delay_mean_mean = 12.75, delay_mean_sd = 3,
-                          delay_sd_mean = 7, delay_sd_sd = 2,
-                          cfr_a = 6.6, cfr_b = 13.4) {
-  list(delay_mean_mean = delay_mean_mean, delay_mean_sd = delay_mean_sd,
-       delay_sd_mean = delay_sd_mean, delay_sd_sd = delay_sd_sd,
-       cfr_a = cfr_a, cfr_b = cfr_b)
+default_delay <- function() {
+  dist.spec::LogNormal(
+    meanlog = dist.spec::Normal(mean = 2.41, sd = 0.2),
+    sdlog = dist.spec::Normal(mean = 0.51, sd = 0.15)
+  )
+}
+
+# Native parameter order per family (p1, p2), matching the Stan model.
+delay_native_order <- function(family) {
+  switch(
+    family,
+    lognormal = c("meanlog", "sdlog"),
+    gamma = c("shape", "rate"),
+    stop("unsupported delay family '", family,
+         "'; cfrnow supports lognormal and gamma.", call. = FALSE)
+  )
+}
+
+# Parse one native parameter of a delay `dist_spec` into Stan inputs: a fixed
+# value (bare number or Fixed()) or a Normal() prior. dist.spec allows only
+# Normal priors on parameters, which is what the Stan model expects.
+parse_delay_param <- function(p, name) {
+  if (is.numeric(p)) {
+    return(list(est = 0L, fixed = p, prior_mean = 1, prior_sd = 1))
+  }
+  if (inherits(p, "dist_spec")) {
+    dname <- dist.spec::get_distribution(p)
+    pars <- dist.spec::get_parameters(p)
+    if (dname == "fixed") {
+      return(list(est = 0L, fixed = pars$value, prior_mean = 1, prior_sd = 1))
+    }
+    if (dname == "normal") {
+      return(list(est = 1L, fixed = 1,
+                  prior_mean = pars$mean, prior_sd = pars$sd))
+    }
+    stop("delay parameter '", name, "' must be fixed or a Normal() prior; got ",
+         dname, ".", call. = FALSE)
+  }
+  stop("unrecognised specification for delay parameter '", name, "'.",
+       call. = FALSE)
+}
+
+# Turn a delay `dist_spec` into the Stan data fields (dist_id + p1/p2 flags,
+# fixed values and prior hyperparameters).
+delay_to_stan_data <- function(delay) {
+  if (!inherits(delay, "dist_spec")) {
+    stop("`delay` must be a dist.spec distribution, ",
+         "e.g. LogNormal() or Gamma().", call. = FALSE)
+  }
+  fam <- dist.spec::get_distribution(delay)
+  native <- delay_native_order(fam)
+  pars <- dist.spec::get_parameters(delay)
+  if (!all(native %in% names(pars))) {
+    stop("`delay` must be given in native parameters (", native[1], ", ",
+         native[2], ") for a ", fam, " distribution.", call. = FALSE)
+  }
+  p1 <- parse_delay_param(pars[[native[1]]], native[1])
+  p2 <- parse_delay_param(pars[[native[2]]], native[2])
+  list(
+    dist_id = primarycensored::pcd_stan_dist_id(fam, type = "delay"),
+    primary_id = primarycensored::pcd_stan_dist_id("uniform", type = "primary"),
+    p1_est = p1$est, p2_est = p2$est,
+    p1_fixed = p1$fixed, p2_fixed = p2$fixed,
+    p1_prior_mean = p1$prior_mean, p1_prior_sd = p1$prior_sd,
+    p2_prior_mean = p2$prior_mean, p2_prior_sd = p2$prior_sd
+  )
 }
 
 #' Compile the mixture-cure CFR Stan model
@@ -48,65 +106,50 @@ cfrnow_model <- function(...) {
 #' Fit the real-time mixture-cure CFR model
 #'
 #' @param data A `cfrnow_data` list from [prepare_cfr_data()].
-#' @param delay_family Onset-to-death delay family; see [cfrnow_families()].
-#'   Defaults to `"gamma"` (the family selected for BDBV in the Isiro
-#'   reanalysis). The mean/sd parameterisation makes priors and summaries
-#'   identical across families.
-#' @param priors Prior hyperparameters, see [cfrnow_priors()].
+#' @param delay Onset-to-death delay as a dist.spec distribution
+#'   ([dist.spec::LogNormal()] or [dist.spec::Gamma()]). Each native parameter
+#'   is co-estimated when given as a `Normal()` prior, or held fixed when given
+#'   as a number / [dist.spec::Fixed()]; fixing the whole delay yields the
+#'   Ghani/Nishiura fixed-delay estimator. Defaults to [default_delay()].
+#' @param cfr_a,cfr_b Beta prior on the case fatality ratio (default
+#'   `Beta(6.6, 13.4)`, mean ~= 0.33).
 #' @param model A compiled `CmdStanModel`; defaults to [cfrnow_model()].
-#' @param chains,parallel_chains,iter_warmup,iter_sampling,seed Passed to
+#' @param chains,parallel_chains,iter_warmup,iter_sampling,seed,... Passed to
 #'   `CmdStanModel$sample()`.
-#' @param init Initial values passed to `CmdStanModel$sample()`. Defaults to a
-#'   generator drawing near the priors, which keeps warmup off the degenerate
-#'   delay-sd = 0 boundary.
-#' @param ... Further arguments to `CmdStanModel$sample()`.
-#' @return A `cfrnow_fit` object wrapping the `CmdStanMCMC` fit and `data`.
+#' @return A `cfrnow_fit` object wrapping the `CmdStanMCMC` fit, `data` and the
+#'   `delay` specification.
 #' @examples
 #' \dontrun{
 #' ll <- simulate_linelist(n = 300, cfr = 0.55)
 #' d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-#' fit <- fit_cfr(d, delay_family = "gamma")
+#' fit <- fit_cfr(d, delay = default_delay())
 #' summarise_cfr(fit)
 #' }
 #' @export
-fit_cfr <- function(data, delay_family = "gamma", priors = cfrnow_priors(),
+fit_cfr <- function(data, delay = default_delay(), cfr_a = 6.6, cfr_b = 13.4,
                     model = cfrnow_model(),
                     chains = 4, parallel_chains = chains,
                     iter_warmup = 1000, iter_sampling = 1000,
-                    seed = 20260508, init = NULL, ...) {
+                    seed = 20260508, ...) {
   if (!inherits(data, "cfrnow_data")) {
     stop("`data` must come from prepare_cfr_data().", call. = FALSE)
   }
-  dist_id <- delay_dist_id(delay_family)
-
-  if (is.null(init)) {
-    init <- function() {
-      list(delay_mean = max(stats::rnorm(1, priors$delay_mean_mean,
-                                         priors$delay_mean_sd / 2), 1),
-           delay_sd = max(stats::rnorm(1, priors$delay_sd_mean,
-                                       priors$delay_sd_sd / 2), 1),
-           cfr = stats::rbeta(1, priors$cfr_a, priors$cfr_b))
-    }
-  }
+  ds <- delay_to_stan_data(delay)
 
   stan_data <- c(
     data[c("n_death", "death_delay", "death_width",
            "n_cens", "censor_time", "censor_width", "n_resolved")],
-    list(
-      dist_id = dist_id,
-      primary_id = primarycensored::pcd_stan_dist_id(
-        "uniform", type = "primary"
-      )
-    ),
-    priors
+    ds,
+    list(cfr_a = cfr_a, cfr_b = cfr_b)
   )
   fit <- model$sample(
     data = stan_data, chains = chains, parallel_chains = parallel_chains,
     iter_warmup = iter_warmup, iter_sampling = iter_sampling,
-    seed = seed, init = init, ...
+    seed = seed, ...
   )
   structure(
-    list(fit = fit, data = data, delay_family = delay_family, priors = priors),
+    list(fit = fit, data = data, delay = delay,
+         cfr_prior = c(a = cfr_a, b = cfr_b)),
     class = "cfrnow_fit"
   )
 }

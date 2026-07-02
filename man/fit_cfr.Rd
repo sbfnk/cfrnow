@@ -6,41 +6,38 @@
 \usage{
 fit_cfr(
   data,
-  delay_family = "gamma",
-  priors = cfrnow_priors(),
+  delay = default_delay(),
+  cfr_a = 6.6,
+  cfr_b = 13.4,
   model = cfrnow_model(),
   chains = 4,
   parallel_chains = chains,
   iter_warmup = 1000,
   iter_sampling = 1000,
   seed = 20260508,
-  init = NULL,
   ...
 )
 }
 \arguments{
 \item{data}{A \code{cfrnow_data} list from \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}.}
 
-\item{delay_family}{Onset-to-death delay family; see \code{\link[=cfrnow_families]{cfrnow_families()}}.
-Defaults to \code{"gamma"} (the family selected for BDBV in the Isiro
-reanalysis). The mean/sd parameterisation makes priors and summaries
-identical across families.}
+\item{delay}{Onset-to-death delay as a dist.spec distribution
+(\code{\link[dist.spec:LogNormal]{dist.spec::LogNormal()}} or \code{\link[dist.spec:Gamma]{dist.spec::Gamma()}}). Each native parameter
+is co-estimated when given as a \code{Normal()} prior, or held fixed when given
+as a number / \code{\link[dist.spec:Fixed]{dist.spec::Fixed()}}; fixing the whole delay yields the
+Ghani/Nishiura fixed-delay estimator. Defaults to \code{\link[=default_delay]{default_delay()}}.}
 
-\item{priors}{Prior hyperparameters, see \code{\link[=cfrnow_priors]{cfrnow_priors()}}.}
+\item{cfr_a, cfr_b}{Beta prior on the case fatality ratio (default
+\code{Beta(6.6, 13.4)}, mean ~= 0.33).}
 
 \item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=cfrnow_model]{cfrnow_model()}}.}
 
-\item{chains, parallel_chains, iter_warmup, iter_sampling, seed}{Passed to
+\item{chains, parallel_chains, iter_warmup, iter_sampling, seed, ...}{Passed to
 \code{CmdStanModel$sample()}.}
-
-\item{init}{Initial values passed to \code{CmdStanModel$sample()}. Defaults to a
-generator drawing near the priors, which keeps warmup off the degenerate
-delay-sd = 0 boundary.}
-
-\item{...}{Further arguments to \code{CmdStanModel$sample()}.}
 }
 \value{
-A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit and \code{data}.
+A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data} and the
+\code{delay} specification.
 }
 \description{
 Fit the real-time mixture-cure CFR model
@@ -49,7 +46,7 @@ Fit the real-time mixture-cure CFR model
 \dontrun{
 ll <- simulate_linelist(n = 300, cfr = 0.55)
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-fit <- fit_cfr(d, delay_family = "gamma")
+fit <- fit_cfr(d, delay = default_delay())
 summarise_cfr(fit)
 }
 }

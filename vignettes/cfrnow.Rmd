@@ -59,14 +59,16 @@ round(naive, 3)  # the downward-biased naive ratio
 
 ## Fitting
 
-`fit_cfr()` fits the mixture-cure model with cmdstanr. The delay is
-parameterised by its mean and standard deviation, so the choice of family
-(`"gamma"` by default, or `"lognormal"`) leaves the priors and summaries
-unchanged. This step needs a working CmdStan install and is not run when the
+`fit_cfr()` fits the mixture-cure model with cmdstanr. The onset-to-death delay
+is supplied as a [dist.spec](https://epiforecasts.io/dist.spec/) distribution.
+`default_delay()` is a lognormal with `Normal()` priors on its native parameters
+(the Julia reference values); give a parameter as a number or `Fixed()` to hold
+it fixed, and fixing the whole delay gives the Ghani/Nishiura fixed-delay
+estimator. This step needs a working CmdStan install and is not run when the
 vignette is built.
 
 ```{r fit, eval = FALSE}
-fit <- fit_cfr(d, delay_family = "gamma")
+fit <- fit_cfr(d)                       # default_delay(): estimated lognormal
 summarise_cfr(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.579  0.528  0.579  0.625 1.001     3200
@@ -97,5 +99,5 @@ The correction fixes a *timing* bias; it cannot repair the data.
   `cfr_low_information`. Treat a flagged estimate as prior-driven.
 - **Stationary delay and homogeneous CFR.** A pooled CFR lags reality as
   treatment access scales up; time-varying CFR is future work.
-- **Delay family is chosen, not estimated.** Refit with
-  `delay_family = "lognormal"` to check sensitivity to the tail.
+- **Delay family is chosen, not estimated.** Refit with a
+  `dist.spec::Gamma()` delay to check sensitivity to the tail.

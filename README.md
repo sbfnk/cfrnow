@@ -48,6 +48,19 @@ summarise_cfr(fit)
 Pass `obs_time = NULL` for a retrospective (fully-resolved) fit, which reduces
 to the naive ratio with the delay as a nuisance.
 
+The onset-to-death delay is given as a
+[dist.spec](https://epiforecasts.io/dist.spec/) distribution via the `delay`
+argument. [default_delay()] is a lognormal with `Normal()` priors on its
+parameters; supply a `dist.spec::Gamma()` to change family, or give a parameter
+as a number / `dist.spec::Fixed()` to hold it fixed. Fixing the whole delay
+gives the Ghani/Nishiura fixed-delay estimator:
+
+```r
+library(dist.spec)
+fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))  # gamma
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                # fixed-F
+```
+
 Your line list needs an `onset_date` column and a `death_date` column (`NA` for
 cases that have not died); optional `onset_lower`/`onset_upper` give an onset
 window that widens the primary censoring.
@@ -77,7 +90,7 @@ before quoting a number:
 - **Delay family is chosen, not estimated.** Gamma and lognormal differ in tail
   weight, which affects how quickly a recent case counts as "probably cured".
   With sparse data the family is not identifiable from the line list, so check
-  sensitivity by refitting with `delay_family = "lognormal"`.
+  sensitivity by refitting with a `dist.spec::Gamma()` delay.
 
 ## Roadmap
 
@@ -89,14 +102,16 @@ stratification (age, sex, vaccination); and posterior-predictive checks.
 ## Status
 
 Early but functional. The model, data preparation, summaries, a vignette and
-unit tests are in place, and `R CMD check` is clean. Gamma (the default) and
-lognormal onset-to-death families are supported; the mean/sd parameterisation
-keeps priors and summaries identical across them.
+unit tests are in place, and `R CMD check` is clean. Lognormal (the default) and
+gamma onset-to-death delays are supported, specified via
+[dist.spec](https://epiforecasts.io/dist.spec/) with priors on the native
+parameters (or fixed for the Ghani/Nishiura estimator).
 
 ## Requirements
 
 - [cmdstanr](https://mc-stan.org/cmdstanr/) and a working CmdStan install
 - [primarycensored](https://primarycensored.epinowcast.org/)
+- [dist.spec](https://epiforecasts.io/dist.spec/)
 
 The primarycensored Stan functions are vendored into
 `inst/stan/include/pcd_functions.stan`; regenerate with `data-raw/vendor_stan.R`

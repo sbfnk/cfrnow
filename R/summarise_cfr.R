@@ -15,8 +15,9 @@ beta_sd <- function(a, b) {
 #' convergence diagnostics (`rhat`, `ess_bulk`). The naive `deaths / cases`
 #' ratio is returned as an attribute for comparison; in real time it
 #' underestimates the corrected CFR because not every fatal case has died by the
-#' cut-off. The delay summaries are family-independent because the model is
-#' parameterised directly by the delay mean and sd.
+#' cut-off. The `delay_mean`/`delay_sd` summaries (days) are recovered from the
+#' native parameters as generated quantities, so they are the same whatever
+#' family the delay used; with a fixed delay they are constant.
 #'
 #' When few deaths have resolved (a young outbreak), the CFR is only weakly
 #' identified and its posterior stays close to the prior. This is reported via
@@ -50,17 +51,20 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
     m <- posterior::extract_variable_matrix(draws, name)  # iterations x chains
     x <- as.numeric(m)
     qv <- stats::quantile(x, probs = probs, names = FALSE)
+    # A fixed delay makes delay_mean/delay_sd constant; rhat/ess are undefined
+    # there, so report NA rather than a warning.
+    constant <- stats::sd(x) == 0
     data.frame(quantity = name, mean = mean(x),
                stats::setNames(as.list(qv), qcols),
-               rhat = posterior::rhat(m),
-               ess_bulk = posterior::ess_bulk(m),
+               rhat = if (constant) NA_real_ else posterior::rhat(m),
+               ess_bulk = if (constant) NA_real_ else posterior::ess_bulk(m),
                check.names = FALSE)
   }
   out <- do.call(rbind, lapply(vars, qrow))
 
   cfr_draws <- as.numeric(posterior::extract_variable(draws, "cfr"))
   cfr_post_sd <- stats::sd(cfr_draws)
-  cfr_prior_sd <- beta_sd(object$priors$cfr_a, object$priors$cfr_b)
+  cfr_prior_sd <- beta_sd(object$cfr_prior[["a"]], object$cfr_prior[["b"]])
 
   attr(out, "naive_cfr") <- naive_cfr(object$data)
   attr(out, "n_cases") <- object$data$n_cases
@@ -73,7 +77,7 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
 #' @export
 print.cfrnow_fit <- function(x, ...) {
   s <- summarise_cfr(x)
-  message("<cfrnow_fit> ", x$delay_family, " delay")
+  message("<cfrnow_fit> ", dist.spec::get_distribution(x$delay), " delay")
   message("  cases: ", x$data$n_cases,
           "   deaths by cut-off: ", x$data$n_deaths,
           "   naive CFR: ", round(attr(s, "naive_cfr"), 3))

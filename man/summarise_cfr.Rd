@@ -27,8 +27,9 @@ Pools the posterior draws of the corrected CFR and the onset-to-death delay
 convergence diagnostics (\code{rhat}, \code{ess_bulk}). The naive \code{deaths / cases}
 ratio is returned as an attribute for comparison; in real time it
 underestimates the corrected CFR because not every fatal case has died by the
-cut-off. The delay summaries are family-independent because the model is
-parameterised directly by the delay mean and sd.
+cut-off. The \code{delay_mean}/\code{delay_sd} summaries (days) are recovered from the
+native parameters as generated quantities, so they are the same whatever
+family the delay used; with a fixed delay they are constant.
 }
 \details{
 When few deaths have resolved (a young outbreak), the CFR is only weakly

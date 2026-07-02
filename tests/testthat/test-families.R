@@ -26,5 +26,27 @@ test_that("simulated delays match the requested mean and sd", {
 
 test_that("unsupported families are rejected", {
   expect_error(delay_to_native(10, 5, "weibull"))
-  expect_error(delay_dist_id("weibull"))
+  expect_error(delay_native_order("weibull"))
+  expect_error(delay_to_stan_data(dist.spec::Normal(mean = 5, sd = 1)))
+})
+
+test_that("delay_to_stan_data reads estimated (Normal) native parameters", {
+  d <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.4, 0.2),
+                            sdlog = dist.spec::Normal(0.5, 0.15))
+  ds <- delay_to_stan_data(d)
+  expect_equal(ds$dist_id, primarycensored::pcd_stan_dist_id("lognormal", "delay"))
+  expect_equal(ds$p1_est, 1L)
+  expect_equal(ds$p2_est, 1L)
+  expect_equal(ds$p1_prior_mean, 2.4)
+  expect_equal(ds$p2_prior_sd, 0.15)
+})
+
+test_that("delay_to_stan_data reads a fixed delay (fixed-F)", {
+  d <- dist.spec::Gamma(shape = 3, rate = 0.24)
+  ds <- delay_to_stan_data(d)
+  expect_equal(ds$dist_id, primarycensored::pcd_stan_dist_id("gamma", "delay"))
+  expect_equal(ds$p1_est, 0L)
+  expect_equal(ds$p2_est, 0L)
+  expect_equal(ds$p1_fixed, 3)
+  expect_equal(ds$p2_fixed, 0.24)
 })
