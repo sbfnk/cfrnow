@@ -59,8 +59,16 @@ c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 #>      400      177      223
 ```
 
+You supply the onset-to-death delay as a
+[dist.spec](https://epiforecasts.io/dist.spec/) distribution via the
+`delay` argument; there is no default, because a sensible delay depends
+on the pathogen and setting. Here the BDBV/Isiro onset-to-death prior is
+used:
+
 ``` r
-fit <- fit_cfr(d)
+library(dist.spec)
+onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
+fit <- fit_cfr(d, delay = onset_to_death)
 summarise_cfr(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.560  0.505  0.560  0.615 1.001     3100
@@ -71,18 +79,15 @@ summarise_cfr(fit)
 Pass `obs_time = NULL` for a retrospective (fully-resolved) fit, which
 reduces to the naive ratio with the delay as a nuisance.
 
-The onset-to-death delay is given as a
-[dist.spec](https://epiforecasts.io/dist.spec/) distribution via the
-`delay` argument. `default_delay()` is a lognormal with `Normal()`
-priors on its parameters; supply a `dist.spec::Gamma()` to change
-family, or give a parameter as a number / `dist.spec::Fixed()` to hold
-it fixed:
+Give a native parameter a `Normal()` prior to co-estimate it, or a fixed
+number / `Fixed()` to hold it fixed; supply a `Gamma()` for a different
+family, or a `recovery_delay` for the competing-risks fit:
 
 ``` r
-library(dist.spec)
 fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))  # gamma
-fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                # fixed-F
-fit_cfr(d, recovery_delay = default_recovery_delay())  # competing risks (recovery timing)
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))               # fixed-F
+fit_cfr(d, delay = onset_to_death,
+        recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))   # competing risks
 ```
 
 Which of these to use follows from your data: onset and death dates give

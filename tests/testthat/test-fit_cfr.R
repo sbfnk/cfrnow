@@ -9,7 +9,9 @@ test_that("retrospective fit recovers a known CFR", {
   set.seed(1)
   ll <- simulate_linelist(n = 600, cfr = 0.45)
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  fit <- fit_cfr(d, chains = 2, parallel_chains = 2,
+  delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
+                                sdlog = dist.spec::Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summarise_cfr(fit)
   cfr_row <- s[s$quantity == "cfr", ]
@@ -22,7 +24,9 @@ test_that("summary carries convergence diagnostics and identifiability flag", {
   set.seed(3)
   ll <- simulate_linelist(n = 500, cfr = 0.5)
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  fit <- fit_cfr(d, chains = 2, parallel_chains = 2,
+  delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
+                                sdlog = dist.spec::Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summarise_cfr(fit)
   expect_true(all(c("rhat", "ess_bulk") %in% names(s)))
@@ -54,7 +58,9 @@ test_that("real-time correction lifts the estimate above the naive ratio", {
   cut <- max(ll$onset_date) - 2          # cut-off soon after the last onsets
   d <- prepare_cfr_data(ll, obs_time = cut)
   naive <- d$n_deaths / d$n_cases
-  fit <- fit_cfr(d, chains = 2, parallel_chains = 2,
+  delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
+                                sdlog = dist.spec::Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summarise_cfr(fit)
   cfr_med <- s[s$quantity == "cfr", "q50"]

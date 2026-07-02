@@ -1,46 +1,3 @@
-#' Default onset-to-death delay specification
-#'
-#' A [dist.spec::LogNormal()] with `Normal()` priors on the native parameters,
-#' reproducing the BDBV/Ebolavirus onset-to-death prior of the Julia reference
-#' model (the Isiro 2012 line-list reanalysis): `meanlog ~ Normal(2.41, 0.2)`,
-#' `sdlog ~ Normal(0.51, 0.15)` (delay mean ~= 12.75 d, sd ~= 7 d).
-#'
-#' Supply your own [dist.spec::LogNormal()] or [dist.spec::Gamma()] to
-#' [fit_cfr()] to change the family or priors. Give each native parameter as a
-#' `Normal()` to co-estimate it, or as a fixed number / [dist.spec::Fixed()] to
-#' hold it fixed (fixing the whole delay gives the Ghani/Nishiura estimator).
-#'
-#' @return A `dist_spec` for the onset-to-death delay.
-#' @examples
-#' default_delay()
-#' @export
-default_delay <- function() {
-  dist.spec::LogNormal(
-    meanlog = dist.spec::Normal(mean = 2.41, sd = 0.2),
-    sdlog = dist.spec::Normal(mean = 0.51, sd = 0.15)
-  )
-}
-
-#' Default onset-to-recovery delay specification
-#'
-#' A weakly-informative [dist.spec::LogNormal()] for the onset-to-recovery
-#' (discharge) delay, centred around a mean of ~20 days and sd of ~11 days,
-#' longer than onset-to-death. Pass it (or your own) as `recovery_delay` to
-#' [fit_cfr()] to switch on the competing-risks model that uses recovery
-#' *timing*. There is much less external information on this delay than on
-#' onset-to-death, so set it from your own data where possible.
-#'
-#' @return A `dist_spec` for the onset-to-recovery delay.
-#' @examples
-#' default_recovery_delay()
-#' @export
-default_recovery_delay <- function() {
-  dist.spec::LogNormal(
-    meanlog = dist.spec::Normal(mean = 2.9, sd = 0.3),
-    sdlog = dist.spec::Normal(mean = 0.5, sd = 0.2)
-  )
-}
-
 # Native parameter order per family (p1, p2), matching the Stan model.
 delay_native_order <- function(family) {
   switch(
@@ -134,17 +91,20 @@ cfrnow_model <- function(...) {
 #'
 #' @param data A `cfrnow_data` list from [prepare_cfr_data()].
 #' @param delay Onset-to-death delay as a dist.spec distribution
-#'   ([dist.spec::LogNormal()] or [dist.spec::Gamma()]). Each native parameter
-#'   is co-estimated when given as a `Normal()` prior, or held fixed when given
-#'   as a number / [dist.spec::Fixed()]; fixing the whole delay yields the
-#'   Ghani/Nishiura fixed-delay estimator. Defaults to [default_delay()].
+#'   ([dist.spec::LogNormal()] or [dist.spec::Gamma()]); required, with no
+#'   default, because a sensible delay is pathogen- and setting-specific. Each
+#'   native parameter is co-estimated when given as a `Normal()` prior, or held
+#'   fixed when given as a number / [dist.spec::Fixed()]; fixing the whole delay
+#'   yields the Ghani/Nishiura fixed-delay estimator. For example the BDBV/Isiro
+#'   onset-to-death prior is a `LogNormal` with `meanlog ~ Normal(2.41, 0.2)`,
+#'   `sdlog ~ Normal(0.51, 0.15)` (mean ~= 12.75 d).
 #' @param recovery_delay Optional onset-to-recovery delay (a dist.spec
 #'   distribution, same conventions as `delay`). When supplied, cfrnow fits the
 #'   competing-risks model that uses recovery *timing*: a recovered case
 #'   contributes `(1 - cfr) * f_R(r)` and an unresolved case contributes
 #'   `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`. When `NULL` (default),
 #'   recovery timing is ignored and recovered cases contribute only the cure
-#'   factor `1 - cfr`. See [default_recovery_delay()].
+#'   factor `1 - cfr`.
 #' @param cfr_a,cfr_b Beta prior on the case fatality ratio (default
 #'   `Beta(6.6, 13.4)`, mean ~= 0.33).
 #' @param model A compiled `CmdStanModel`; defaults to [cfrnow_model()].
@@ -156,18 +116,26 @@ cfrnow_model <- function(...) {
 #' \dontrun{
 #' ll <- simulate_linelist(n = 300, cfr = 0.55, recovery = TRUE)
 #' d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-#' # competing-risks fit (uses recovery timing):
-#' fit <- fit_cfr(d, recovery_delay = default_recovery_delay())
+#' onset_to_death <- dist.spec::LogNormal(
+#'   meanlog = dist.spec::Normal(2.41, 0.2),
+#'   sdlog = dist.spec::Normal(0.51, 0.15)
+#' )
+#' fit <- fit_cfr(d, delay = onset_to_death)
 #' summarise_cfr(fit)
 #' }
 #' @export
-fit_cfr <- function(data, delay = default_delay(), recovery_delay = NULL,
+fit_cfr <- function(data, delay, recovery_delay = NULL,
                     cfr_a = 6.6, cfr_b = 13.4, model = cfrnow_model(),
                     chains = 4, parallel_chains = chains,
                     iter_warmup = 1000, iter_sampling = 1000,
                     seed = 20260508, ...) {
   if (!inherits(data, "cfrnow_data")) {
     stop("`data` must come from prepare_cfr_data().", call. = FALSE)
+  }
+  if (missing(delay)) {
+    stop("supply a `delay` (an onset-to-death dist.spec distribution); ",
+         "there is no default because it is pathogen- and setting-specific.",
+         call. = FALSE)
   }
   use_recovery <- !is.null(recovery_delay)
 
