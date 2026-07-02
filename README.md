@@ -7,22 +7,22 @@
 <!-- badges: end -->
 
 Real-time case fatality ratio (CFR) estimation from line-list data, using a
-Bayesian **mixture-cure survival model**. It is the R counterpart of the CFR
+Bayesian mixture-cure survival model. It is the R counterpart of the CFR
 component of the Julia
 [`bdbv-2026-linelist-analysis`](https://github.com/sbfnk/bdbv-2026-linelist-analysis)
 model, built for collaborators who work in R.
 
 ## Why
 
-The naive `deaths / cases` ratio is biased **downward** in real time: recent
+The naive `deaths / cases` ratio is biased downward in real time: recent
 cases have not yet had time to die. Restricting to cases with a *resolved*
-outcome (`deaths / (deaths + recoveries)`) swaps that for an **upward** bias,
+outcome (`deaths / (deaths + recoveries)`) swaps that for an upward bias,
 because deaths resolve faster than recoveries, so the resolved set is enriched
 for deaths at any mid-outbreak cut-off.
 
 `cfrnow` avoids conditioning on resolution at all. Each case is fatal with
 probability `cfr`; a fatal case dies at an interval-censored onset-to-death
-delay `F`; every case still alive at the cut-off is **right-censored**,
+delay `F`; every case still alive at the cut-off is right-censored,
 contributing the mixture-cure survival term `1 - cfr * F(t)`, the probability
 that it is either non-fatal or fatal but not yet resolved. With `F` fixed this is
 the Ghani/Nishiura `deaths / sum_i F(t_i)` estimator; here `F` is co-estimated
@@ -50,7 +50,7 @@ to the naive ratio with the delay as a nuisance.
 
 The onset-to-death delay is given as a
 [dist.spec](https://epiforecasts.io/dist.spec/) distribution via the `delay`
-argument. [default_delay()] is a lognormal with `Normal()` priors on its
+argument. `default_delay()` is a lognormal with `Normal()` priors on its
 parameters; supply a `dist.spec::Gamma()` to change family, or give a parameter
 as a number / `dist.spec::Fixed()` to hold it fixed. Fixing the whole delay
 gives the Ghani/Nishiura fixed-delay estimator:
@@ -77,7 +77,7 @@ before quoting a number:
 
 - **Complete death ascertainment.** A death that never reaches the line list
   (for example a community death outside a treatment centre) is silently
-  treated as a survivor, biasing the CFR **down**. In an outbreak where
+  treated as a survivor, biasing the CFR down. In an outbreak where
   ascertainment is ETC-centred this is the single biggest threat to validity.
 - **Deaths known on their day of occurrence.** The model assumes a death enters
   the data when it happens. Real notification lag reintroduces the very bias the

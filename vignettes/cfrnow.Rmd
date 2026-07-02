@@ -13,10 +13,10 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 ## The problem
 
-The naive case fatality ratio, `deaths / cases`, is biased **downward** in real
+The naive case fatality ratio, `deaths / cases`, is biased downward in real
 time: recent cases have not yet had time to die. Restricting to cases with a
 *resolved* outcome, `deaths / (deaths + recoveries)`, swaps that for an
-**upward** bias, because deaths resolve faster than recoveries, so at any
+upward bias, because deaths resolve faster than recoveries, so at any
 mid-outbreak cut-off the resolved set is enriched for deaths.
 
 `cfrnow` sidesteps both by never conditioning on resolution. Each case is fatal
