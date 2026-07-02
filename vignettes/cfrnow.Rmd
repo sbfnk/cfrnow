@@ -120,6 +120,47 @@ Because the model is parameterised by the native parameters and reports
 whichever family you choose; refit with a different family to check tail
 sensitivity.
 
+## Estimating the delay from data
+
+Rather than hand-picking the prior, you can estimate the onset-to-death delay
+from a line list with
+[primarycensored](https://primarycensored.epinowcast.org/)'s
+`fitdistdoublecens()`, which handles the double interval censoring (onset and
+death each known only to the day) and, in real time, the right-truncation:
+
+```{r estimate-delay, eval = FALSE}
+library(primarycensored)   # also needs the fitdistrplus package
+
+deaths <- ll[!is.na(ll$death_date), ]
+delays <- as.numeric(deaths$death_date - deaths$onset_date)
+cens <- data.frame(left = delays, right = delays + 1,  # death known to the day
+                   pwindow = 1,                          # onset known to the day
+                   D = Inf)                              # no right truncation
+est <- fitdistdoublecens(cens, distr = "lnorm",
+                         start = list(meanlog = 2, sdlog = 1))
+coef(est)   # meanlog ~ 2.40, sdlog ~ 0.54  (mean ~ 12.8 days)
+```
+
+Turn the estimate into a `delay` for `fit_cfr()`, using the standard errors as
+the prior widths (or fix it at the point estimate for the Ghani/Nishiura fit):
+
+```{r use-estimate, eval = FALSE}
+p <- coef(est)
+se <- sqrt(diag(vcov(est)))
+delay <- dist.spec::LogNormal(
+  meanlog = dist.spec::Normal(p[["meanlog"]], se[["meanlog"]]),
+  sdlog = dist.spec::Normal(p[["sdlog"]], se[["sdlog"]])
+)
+fit_cfr(d, delay = delay)
+```
+
+Two caveats. In real time, replace `D = Inf` with each case's follow-up
+(`obs_time - onset`) so the delay is corrected for right-truncation. And if you
+estimate from the same deaths you then fit, remember that `fit_cfr()` already
+co-estimates the delay jointly with `cfr` when you pass `Normal()` priors; the
+separate fit earns its keep mainly for a delay taken from historical or external
+data (say a previous outbreak), used as an informed prior or a fixed delay.
+
 ## Using recovery timing
 
 If your line list records when non-fatal cases recovered, add a `recovery_date`

@@ -94,6 +94,11 @@ default death-only fit; reliable recovery dates let you add a `recovery_delay`
 for the competing-risks fit; and a delay you trust from elsewhere can be fixed
 for the Ghani/Nishiura estimator.
 
+You can also estimate the onset-to-death delay from a line list with
+[primarycensored](https://primarycensored.epinowcast.org/)'s
+`fitdistdoublecens()` (which handles the interval censoring and right-truncation)
+and feed it in as the `delay` — see `vignette("cfrnow")`.
+
 Your line list needs an `onset_date` column and a `death_date` column (`NA` for
 cases that have not died). Optional columns: `onset_lower`/`onset_upper` give an
 onset window that widens the primary censoring, and `recovery_date` marks a
