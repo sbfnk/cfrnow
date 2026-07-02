@@ -29,8 +29,9 @@ the Ghani/Nishiura `deaths / sum_i F(t_i)` estimator; here `F` is co-estimated
 and its uncertainty propagated. The enrichment bias is avoided by never
 conditioning on resolution: unresolved cases are right-censored, not dropped. So
 cfrnow needs only death timing and who is still a case, and does not depend on
-recovery dates being recorded — though it uses them when they are, since a
-recovered case is a resolved non-fatal (`1 - cfr`) that tightens the estimate.
+recovery dates being recorded. When they are recorded, supplying a
+`recovery_delay` fits a competing-risks model that also uses the recovery
+*timing* (`(1 - cfr) f_R(r)` for a recovery at `r`), which sharpens the estimate.
 
 Onset dates are interval-censored and, in real-time mode, `F` is
 right-truncated at the cut-off. Both are handled by the analytical censored-CDF
@@ -62,6 +63,7 @@ gives the Ghani/Nishiura fixed-delay estimator:
 library(dist.spec)
 fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))  # gamma
 fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                # fixed-F
+fit_cfr(d, recovery_delay = default_recovery_delay())  # competing risks (recovery timing)
 ```
 
 Your line list needs an `onset_date` column and a `death_date` column (`NA` for

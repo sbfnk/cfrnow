@@ -1,42 +1,61 @@
 // Real-time case fatality ratio via a Bayesian mixture-cure survival model.
 //
 // Each case is fatal with probability `cfr`; a fatal case dies at an
-// onset-to-death delay from the parametric family `dist_id`. Cases still alive
-// at a finite observation cut-off are right-censored (either non-fatal, or
-// fatal but not yet resolved), which corrects the naive deaths / cases ratio in
-// real time. With the delay fixed this is the Ghani/Nishiura estimator; with
-// priors on the delay it is co-estimated.
+// onset-to-death delay `F_D`. A non-fatal case is "cured" and, when recovery is
+// modelled (`use_recovery` = 1), recovers at an onset-to-recovery delay `F_R`.
+// At the observation cut-off a case is one of:
+//   - an observed death at delay d      -> cfr * f_D(d)
+//   - an observed recovery at delay r   -> (1 - cfr) * f_R(r)   [use_recovery]
+//   - a resolved non-death, time unknown -> (1 - cfr)           [retrospective]
+//   - still unresolved at elapsed time t ->
+//       use_recovery: cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))   (competing risks)
+//       otherwise:    1 - cfr * F_D(t)                                (death only)
+// With the delays fixed and recovery off this is the Ghani/Nishiura estimator.
 //
-// The delay is carried in its native parameters (dist.spec-style): lognormal
+// Each delay is carried in its native parameters (dist.spec-style): lognormal
 // (meanlog, sdlog) or gamma (shape, rate). Each native parameter is either
 // fixed (supplied as data) or estimated (a Normal prior); the length-0/1 arrays
 // declare a sampled parameter only when it is estimated, so one model covers
-// fully fixed, fully estimated, and mixed delays. `delay_mean`/`delay_sd` are
-// recovered as generated quantities so summaries stay family-independent.
-//
-// Onset is interval-censored (a per-case day-window via primarycensored's
-// primary uniform); death is censored to its recorded day; the cut-off is an
-// exact boundary, so survivors are only primary-censored.
+// fixed, estimated and mixed delays. Onset is interval-censored (a per-case
+// day-window via primarycensored's primary uniform); deaths and recoveries are
+// censored to their recorded day; the cut-off is an exact boundary, so
+// unresolved cases are only primary-censored.
 functions {
 #include include/pcd_functions.stan
+
+  // Mean and sd (days) of a native (p1, p2) pair, family chosen by dist_id.
+  vector delay_moments(int did, real a, real b) {
+    vector[2] m;
+    if (did == 1) {              // lognormal: (meanlog, sdlog)
+      m[1] = exp(a + square(b) / 2);
+      m[2] = m[1] * sqrt(expm1(square(b)));
+    } else {                     // gamma: (shape, rate)
+      m[1] = a / b;
+      m[2] = sqrt(a) / b;
+    }
+    return m;
+  }
 }
 data {
   // Deaths observed by the cut-off: integer onset->death delay + onset window.
   int<lower=0> n_death;
   array[n_death] int<lower=0> death_delay;
   vector<lower=0>[n_death] death_width;
-  // Survivors alive at a finite cut-off: elapsed follow-up + onset window.
+  // Recoveries observed by the cut-off: integer onset->recovery delay + window.
+  int<lower=0> n_recovery;
+  array[n_recovery] int<lower=0> recovery_delay;
+  vector<lower=0>[n_recovery] recovery_width;
+  // Non-deaths resolved but with no recovery time (retrospective): log(1-cfr).
+  int<lower=0> n_resolved;
+  // Cases still unresolved at a finite cut-off: elapsed follow-up + onset window.
   int<lower=0> n_cens;
   vector<lower=0>[n_cens] censor_time;
   vector<lower=0>[n_cens] censor_width;
-  // Fully-resolved non-fatal cases (retrospective fit); contribute log(1-cfr).
-  int<lower=0> n_resolved;
-  // Delay / primary family ids (from primarycensored::pcd_stan_dist_id()).
-  int<lower=1> dist_id;
+  // Whether to model the onset-to-recovery delay (competing risks).
+  int<lower=0, upper=1> use_recovery;
   int<lower=1> primary_id;
-  // Native delay parameters. Each is either fixed (`*_est` = 0, value in
-  // `*_fixed`) or estimated (`*_est` = 1, Normal prior in `*_prior_*`). p1/p2
-  // are (meanlog, sdlog) for lognormal and (shape, rate) for gamma.
+  // Onset-to-death delay family + native parameters (p1, p2).
+  int<lower=1> dist_id;
   int<lower=0, upper=1> p1_est;
   int<lower=0, upper=1> p2_est;
   real<lower=0> p1_fixed;
@@ -45,22 +64,35 @@ data {
   real<lower=0> p1_prior_sd;
   real p2_prior_mean;
   real<lower=0> p2_prior_sd;
+  // Onset-to-recovery delay family + native parameters (q1, q2). Ignored when
+  // use_recovery = 0 (pass any valid dummy).
+  int<lower=1> recovery_dist_id;
+  int<lower=0, upper=1> q1_est;
+  int<lower=0, upper=1> q2_est;
+  real<lower=0> q1_fixed;
+  real<lower=0> q2_fixed;
+  real q1_prior_mean;
+  real<lower=0> q1_prior_sd;
+  real q2_prior_mean;
+  real<lower=0> q2_prior_sd;
   // CFR prior.
   real<lower=0> cfr_a;
   real<lower=0> cfr_b;
 }
 parameters {
-  // Sampled only when estimated. Both native parameters are positive here; for
-  // lognormal this constrains meanlog > 0, harmless for onset-to-death delays
-  // (a median below one day is implausible) and it keeps a single model.
   array[p1_est] real<lower=0> p1_par;
   array[p2_est] real<lower=0> p2_par;
+  array[use_recovery * q1_est] real<lower=0> q1_par;
+  array[use_recovery * q2_est] real<lower=0> q2_par;
   real<lower=0, upper=1> cfr;
 }
 transformed parameters {
   real p1 = p1_est == 1 ? p1_par[1] : p1_fixed;
   real p2 = p2_est == 1 ? p2_par[1] : p2_fixed;
   array[2] real params = {p1, p2};
+  real q1 = (use_recovery == 1 && q1_est == 1) ? q1_par[1] : q1_fixed;
+  real q2 = (use_recovery == 1 && q2_est == 1) ? q2_par[1] : q2_fixed;
+  array[2] real rparams = {q1, q2};
 }
 model {
   array[0] real primary_params = rep_array(0.0, 0);  // uniform primary: no params
@@ -71,10 +103,25 @@ model {
   if (p2_est == 1) {
     p2_par[1] ~ normal(p2_prior_mean, p2_prior_sd);
   }
+  if (use_recovery == 1 && q1_est == 1) {
+    q1_par[1] ~ normal(q1_prior_mean, q1_prior_sd);
+  }
+  if (use_recovery == 1 && q2_est == 1) {
+    q2_par[1] ~ normal(q2_prior_mean, q2_prior_sd);
+  }
   cfr ~ beta(cfr_a, cfr_b);
 
-  // Fully-resolved non-deaths: the cure component only.
-  target += n_resolved * log1m(cfr);
+  // Every non-death (untimed resolved + observed recovery) carries the cure
+  // factor (1 - cfr); observed recoveries additionally carry the recovery-delay
+  // density when recovery is modelled.
+  target += (n_resolved + n_recovery) * log1m(cfr);
+  if (use_recovery == 1) {
+    for (j in 1:n_recovery) {
+      target += primarycensored_lpmf(recovery_delay[j] | recovery_dist_id,
+          rparams, recovery_width[j], recovery_delay[j] + 1.0,
+          0.0, positive_infinity(), primary_id, primary_params);
+    }
+  }
 
   // Observed deaths: each fatal (log cfr) with a doubly-interval-censored delay.
   target += n_death * log(cfr);
@@ -84,22 +131,28 @@ model {
         0.0, positive_infinity(), primary_id, primary_params);
   }
 
-  // Right-censored survivors: mixture-cure survival 1 - cfr * Fbar(t).
+  // Unresolved cases at the cut-off.
   for (i in 1:n_cens) {
-    real fbar = primarycensored_cdf(censor_time[i] | dist_id, params,
+    real fbar_d = primarycensored_cdf(censor_time[i] | dist_id, params,
         censor_width[i], 0.0, positive_infinity(), primary_id, primary_params);
-    target += log1m(cfr * fbar);
+    if (use_recovery == 1) {
+      // Competing risks: P(neither dead nor recovered by t).
+      real fbar_r = primarycensored_cdf(censor_time[i] | recovery_dist_id,
+          rparams, censor_width[i], 0.0, positive_infinity(),
+          primary_id, primary_params);
+      target += log_sum_exp(log(cfr) + log1m(fbar_d),
+                            log1m(cfr) + log1m(fbar_r));
+    } else {
+      // Death only: non-fatal cases assumed not to resolve.
+      target += log1m(cfr * fbar_d);
+    }
   }
 }
 generated quantities {
-  // Delay mean and sd (days): family-independent summaries of the native pair.
-  real delay_mean;
-  real delay_sd;
-  if (dist_id == 1) {           // lognormal: p1 = meanlog, p2 = sdlog
-    delay_mean = exp(p1 + square(p2) / 2);
-    delay_sd = delay_mean * sqrt(expm1(square(p2)));
-  } else {                      // gamma: p1 = shape, p2 = rate
-    delay_mean = p1 / p2;
-    delay_sd = sqrt(p1) / p2;
-  }
+  vector[2] md = delay_moments(dist_id, p1, p2);
+  vector[2] mr = delay_moments(recovery_dist_id, q1, q2);
+  real delay_mean = md[1];
+  real delay_sd = md[2];
+  real recovery_mean = mr[1];
+  real recovery_sd = mr[2];
 }

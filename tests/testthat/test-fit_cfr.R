@@ -60,3 +60,31 @@ test_that("real-time correction lifts the estimate above the naive ratio", {
   cfr_med <- s[s$quantity == "cfr", "q50"]
   expect_gt(cfr_med, naive)             # corrected > downward-biased naive
 })
+
+test_that("competing-risks fit uses recovery timing and recovers CFR + F_R", {
+  skip_if_no_cmdstan()
+  set.seed(5)
+  ll <- simulate_linelist(n = 700, cfr = 0.5, recovery = TRUE,
+                          delay_mean = 12.75, delay_sd = 7, delay_family = "gamma",
+                          recovery_mean = 21, recovery_sd = 9,
+                          recovery_family = "gamma")
+  d <- prepare_cfr_data(ll, obs_time = NULL)   # retrospective, all resolved
+  expect_gt(d$n_recovery, 0)
+  fit <- fit_cfr(
+    d,
+    delay = dist.spec::Gamma(shape = dist.spec::Normal(3.3, 1),
+                             rate = dist.spec::Normal(0.26, 0.08)),
+    recovery_delay = dist.spec::Gamma(shape = dist.spec::Normal(5, 2),
+                                      rate = dist.spec::Normal(0.24, 0.08)),
+    chains = 2, parallel_chains = 2,
+    iter_warmup = 500, iter_sampling = 500, refresh = 0
+  )
+  s <- summarise_cfr(fit)
+  expect_true(all(c("recovery_mean", "recovery_sd") %in% s$quantity))
+  cfr <- s[s$quantity == "cfr", ]
+  expect_gt(cfr[["q97.5"]], 0.5)
+  expect_lt(cfr[["q2.5"]], 0.5)
+  rmean <- s[s$quantity == "recovery_mean", ]  # true onset-to-recovery mean = 21
+  expect_gt(rmean[["q97.5"]], 21)
+  expect_lt(rmean[["q2.5"]], 21)
+})

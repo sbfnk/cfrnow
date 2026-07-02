@@ -8,6 +8,7 @@ reference:
   contents:
   - prepare_cfr_data
   - default_delay
+  - default_recovery_delay
   - fit_cfr
   - cfrnow_model
 - title: Summarise

@@ -85,16 +85,17 @@ test_that("onset windows widen the primary censoring width", {
   expect_equal(d$death_width, 4)      # (upper - lower) + 1
 })
 
-test_that("recovered-by-cutoff cases are resolved, not censored (real-time)", {
+test_that("recovered-by-cutoff cases are timed recoveries, not censored", {
   ll <- data.frame(
     onset_date = as.Date("2026-01-01") + c(0, 1, 2),
     death_date = as.Date(c("2026-01-05", NA, NA)),
     recovery_date = as.Date(c(NA, "2026-01-08", NA))  # case 2 recovered by cut-off
   )
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
-  expect_equal(d$n_deaths, 1L)     # case 1 died
-  expect_equal(d$n_resolved, 1L)   # case 2 recovered -> resolved
-  expect_equal(d$n_cens, 1L)       # case 3 still unresolved -> censored
+  expect_equal(d$n_deaths, 1L)      # case 1 died
+  expect_equal(d$n_recovery, 1L)    # case 2 recovered -> timed recovery
+  expect_equal(d$recovery_delay, 6L)  # onset 2026-01-02 to recovery 2026-01-08
+  expect_equal(d$n_cens, 1L)        # case 3 still unresolved -> censored
 })
 
 test_that("recovery_date absent reproduces the censor-everything behaviour", {
@@ -117,5 +118,5 @@ test_that("a recovery before onset is dropped as unusable", {
     d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-15")), "unusable"
   )
   expect_equal(d$n_cases, 1L)      # bad record dropped
-  expect_equal(d$n_resolved, 1L)   # case 2 is a valid recovery
+  expect_equal(d$n_recovery, 1L)   # case 2 is a valid recovery
 })

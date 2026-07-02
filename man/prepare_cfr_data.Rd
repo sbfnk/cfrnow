@@ -27,9 +27,10 @@ not-yet-known (right-censored).}
 implying a longer or negative delay are dropped as date-entry errors.}
 }
 \value{
-A \code{cfrnow_data} list with the Stan inputs (\code{n_death},
-\code{death_delay}, \code{death_width}, \code{n_cens}, \code{censor_time}, \code{censor_width},
-\code{n_resolved}) plus \code{n_cases}, \code{n_deaths}, \code{t0} and \code{obs_time}.
+A \code{cfrnow_data} list with the Stan inputs (\code{n_death}, \code{death_delay},
+\code{death_width}, \code{n_recovery}, \code{recovery_delay}, \code{recovery_width}, \code{n_cens},
+\code{censor_time}, \code{censor_width}, \code{n_resolved}) plus \code{n_cases}, \code{n_deaths},
+\code{n_recoveries}, \code{t0} and \code{obs_time}.
 }
 \description{
 Classifies each case at an observation cut-off into an observed death (with

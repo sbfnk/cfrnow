@@ -44,6 +44,9 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
     stop("`object` must come from fit_cfr().", call. = FALSE)
   }
   vars <- c("cfr", "delay_mean", "delay_sd")
+  if (isTRUE(object$use_recovery)) {
+    vars <- c(vars, "recovery_mean", "recovery_sd")
+  }
   draws <- object$fit$draws(variables = vars)
   qcols <- paste0("q", probs * 100)
 

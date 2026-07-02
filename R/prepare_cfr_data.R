@@ -34,9 +34,10 @@
 #' @param max_delay Largest plausible onset-to-death delay (days). Death records
 #'   implying a longer or negative delay are dropped as date-entry errors.
 #'
-#' @return A `cfrnow_data` list with the Stan inputs (`n_death`,
-#'   `death_delay`, `death_width`, `n_cens`, `censor_time`, `censor_width`,
-#'   `n_resolved`) plus `n_cases`, `n_deaths`, `t0` and `obs_time`.
+#' @return A `cfrnow_data` list with the Stan inputs (`n_death`, `death_delay`,
+#'   `death_width`, `n_recovery`, `recovery_delay`, `recovery_width`, `n_cens`,
+#'   `censor_time`, `censor_width`, `n_resolved`) plus `n_cases`, `n_deaths`,
+#'   `n_recoveries`, `t0` and `obs_time`.
 #' @examples
 #' ll <- simulate_linelist(n = 50)
 #' prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
@@ -106,14 +107,18 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
   death_delay <- as.integer(round(delay[is_death]))
   death_width <- width[is_death]
 
+  # Recovered-by-cut-off cases carry their onset-to-recovery timing.
+  recovery_delay <- as.integer(round((recovery_day - onset_lo_day)[recovered]))
+  recovery_width <- width[recovered]
+
   if (retrospective) {
-    # Every non-death is fully resolved.
-    n_resolved <- sum(is_surv)
+    # Non-deaths with no recorded recovery are resolved but untimed.
+    n_resolved <- sum(is_surv & !recovered)
     censor_time <- numeric(0)
     censor_width <- numeric(0)
   } else {
-    # Recovered-by-cut-off cases are resolved; the rest are right-censored.
-    n_resolved <- sum(recovered)
+    # Non-deaths not yet recovered are right-censored.
+    n_resolved <- 0L
     cens <- is_surv & !recovered
     censor_time <- pmax(obs_offset - onset_lo_day[cens], 0)
     censor_width <- width[cens]
@@ -124,12 +129,16 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
       n_death = length(death_delay),
       death_delay = death_delay,
       death_width = death_width,
+      n_recovery = length(recovery_delay),
+      recovery_delay = recovery_delay,
+      recovery_width = recovery_width,
       n_cens = length(censor_time),
       censor_time = censor_time,
       censor_width = censor_width,
       n_resolved = n_resolved,
       n_cases = sum(keep),
       n_deaths = length(death_delay),
+      n_recoveries = length(recovery_delay),
       t0 = t0,
       obs_time = if (retrospective) as.Date(NA) else obs_time
     ),

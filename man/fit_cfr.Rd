@@ -7,6 +7,7 @@
 fit_cfr(
   data,
   delay = default_delay(),
+  recovery_delay = NULL,
   cfr_a = 6.6,
   cfr_b = 13.4,
   model = cfrnow_model(),
@@ -27,6 +28,14 @@ is co-estimated when given as a \code{Normal()} prior, or held fixed when given
 as a number / \code{\link[dist.spec:Fixed]{dist.spec::Fixed()}}; fixing the whole delay yields the
 Ghani/Nishiura fixed-delay estimator. Defaults to \code{\link[=default_delay]{default_delay()}}.}
 
+\item{recovery_delay}{Optional onset-to-recovery delay (a dist.spec
+distribution, same conventions as \code{delay}). When supplied, cfrnow fits the
+competing-risks model that uses recovery \emph{timing}: a recovered case
+contributes \code{(1 - cfr) * f_R(r)} and an unresolved case contributes
+\code{cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))}. When \code{NULL} (default),
+recovery timing is ignored and recovered cases contribute only the cure
+factor \code{1 - cfr}. See \code{\link[=default_recovery_delay]{default_recovery_delay()}}.}
+
 \item{cfr_a, cfr_b}{Beta prior on the case fatality ratio (default
 \code{Beta(6.6, 13.4)}, mean ~= 0.33).}
 
@@ -36,17 +45,18 @@ Ghani/Nishiura fixed-delay estimator. Defaults to \code{\link[=default_delay]{de
 \code{CmdStanModel$sample()}.}
 }
 \value{
-A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data} and the
-\code{delay} specification.
+A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data}, the
+\code{delay}/\code{recovery_delay} specifications and whether recovery was modelled.
 }
 \description{
 Fit the real-time mixture-cure CFR model
 }
 \examples{
 \dontrun{
-ll <- simulate_linelist(n = 300, cfr = 0.55)
+ll <- simulate_linelist(n = 300, cfr = 0.55, recovery = TRUE)
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-fit <- fit_cfr(d, delay = default_delay())
+# competing-risks fit (uses recovery timing):
+fit <- fit_cfr(d, recovery_delay = default_recovery_delay())
 summarise_cfr(fit)
 }
 }
