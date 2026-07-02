@@ -13,7 +13,9 @@ concurrency:
 
 jobs:
   test-coverage:
-    runs-on: macos-latest
+    # Ubuntu, not macOS: the macOS runners intermittently fail to build CmdStan's
+    # TBB libraries when compiling the model, which flakes the Stan-fit tests.
+    runs-on: ubuntu-latest
     if: "! contains(github.event.head_commit.message, '[ci skip]')"
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
