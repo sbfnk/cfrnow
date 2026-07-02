@@ -86,6 +86,21 @@ attribute (see below). Pass `obs_time = NULL` to `prepare_cfr_data()` for a
 retrospective, fully-resolved fit, which returns the naive ratio with the delay
 as a nuisance.
 
+Change the family or fix the delay by passing your own dist.spec distribution:
+
+```{r delay-variants, eval = FALSE}
+library(dist.spec)
+# a gamma delay instead of the default lognormal
+fit_cfr(d, delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08)))
+# a fixed delay: the Ghani/Nishiura fixed-F estimator (only cfr is estimated)
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))
+```
+
+Because the model is parameterised by the native parameters and reports
+`delay_mean`/`delay_sd` as generated quantities, the summary looks the same
+whichever family you choose; refit with a different family to check tail
+sensitivity.
+
 ## Using recovery timing
 
 If your line list records when non-fatal cases recovered, add a `recovery_date`
