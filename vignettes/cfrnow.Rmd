@@ -203,9 +203,15 @@ The correction fixes a *timing* bias; it cannot repair the data.
   community death outside a treatment centre) is treated as a survivor and
   biases the CFR down. This is the dominant risk when ascertainment is
   ETC-centred.
-- **Deaths known on the day they occur.** Notification lag reintroduces the bias
-  the model removes, via the data rather than the delay; nowcast or caveat the
-  death series if that lag is non-trivial.
+- **Deaths reported without lag.** cfrnow assumes a death is in the data by the
+  cut-off. If reporting lags, recent deaths are missing and read as still
+  unresolved, so the real-time `cfr` comes out too low and revises upward as
+  deaths arrive; treat the latest weeks as provisional. If the line list also
+  records *when* each death was reported (not just when it occurred), check the
+  lag; if it is material, move `obs_time` back to a date by which reporting is
+  near-complete (`prepare_cfr_data()` then censors everyone there, trading
+  recency for completeness). Folding a death-reporting delay into the likelihood
+  is future work.
 - **Weak identifiability early on.** When few deaths have resolved, the CFR
   posterior stays close to its prior; `summarise_cfr()` flags this via
   `cfr_low_information`. Treat a flagged estimate as prior-driven.

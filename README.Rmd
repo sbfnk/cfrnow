@@ -118,10 +118,14 @@ before quoting a number:
   example a community death outside a treatment centre) is silently treated as a
   survivor, biasing the CFR down. In an outbreak where ascertainment is
   ETC-centred this is the single biggest threat to validity.
-- **Deaths known on their day of occurrence.** The model assumes a death enters
-  the data when it happens. Real notification lag reintroduces the very bias the
-  model exists to remove, through the data pipeline rather than the delay. If
-  that lag is non-trivial, nowcast or caveat the death series.
+- **Deaths reported without lag.** The model assumes a death is in the data by
+  the cut-off. If reporting lags, recent deaths are missing and read as still
+  unresolved, so the real-time CFR comes out too low and revises upward as
+  deaths arrive; treat the latest weeks as provisional. If the line list records
+  when each death was reported (not just when it occurred), check the lag; if it
+  is material, move `obs_time` back to a date by which reporting is
+  near-complete, trading recency for completeness. A reporting-delay correction
+  in the likelihood is future work.
 - **Stationary delay and homogeneous CFR.** A single onset-to-death delay and CFR
   over the whole outbreak. As treatment access (supportive care, monoclonals)
   scales up, the true CFR should fall, and a pooled estimate lags reality
