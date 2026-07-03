@@ -24,12 +24,12 @@ fit_cfr(
 
 \item{delay}{Onset-to-death delay as a dist.spec distribution
 (\code{\link[dist.spec:LogNormal]{dist.spec::LogNormal()}} or \code{\link[dist.spec:Gamma]{dist.spec::Gamma()}}); required, with no
-default, because a sensible delay is pathogen- and setting-specific. Each
-native parameter is co-estimated when given as a \code{Normal()} prior, or held
-fixed when given as a number / \code{\link[dist.spec:Fixed]{dist.spec::Fixed()}}; fixing the whole delay
-yields the Ghani/Nishiura fixed-delay estimator. For example the BDBV/Isiro
-onset-to-death prior is a \code{LogNormal} with \code{meanlog ~ Normal(2.41, 0.2)},
-\code{sdlog ~ Normal(0.51, 0.15)} (mean ~= 12.75 d).}
+default. Each native parameter is co-estimated when given as a \code{Normal()}
+prior, or held fixed when given as a number / \code{\link[dist.spec:Fixed]{dist.spec::Fixed()}}; fixing
+the whole delay yields the Ghani/Nishiura fixed-delay estimator. For
+example the BDBV/Isiro onset-to-death prior is a \code{LogNormal} with
+\code{meanlog ~ Normal(2.41, 0.2)} and \code{sdlog ~ Normal(0.51, 0.15)}
+(mean ~= 12.75 d).}
 
 \item{recovery_delay}{Optional onset-to-recovery delay (a dist.spec
 distribution, same conventions as \code{delay}). When supplied, cfrnow fits the
@@ -56,7 +56,9 @@ Fit the real-time mixture-cure CFR model
 }
 \examples{
 \dontrun{
-ll <- simulate_linelist(n = 300, cfr = 0.55, recovery = TRUE)
+ll <- simulate_linelist(n = 300, cfr = 0.55,
+                        delay = dist.spec::LogNormal(mean = 12.75, sd = 7),
+                        recovery = dist.spec::LogNormal(mean = 21, sd = 9))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
 onset_to_death <- dist.spec::LogNormal(
   meanlog = dist.spec::Normal(2.41, 0.2),

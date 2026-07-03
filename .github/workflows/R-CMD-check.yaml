@@ -26,10 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          # macOS is omitted: its runners intermittently fail to build CmdStan's
-          # TBB libraries when compiling the model, flaking the Stan-fit tests.
-          # The Stan tests run on the Ubuntu jobs; Windows checks build/install
-          # (CmdStan is not installed there, so those tests skip themselves).
+          # macOS omitted: CmdStan/TBB builds are unreliable on the macOS runners.
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'oldrel-1'}

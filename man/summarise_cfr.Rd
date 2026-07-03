@@ -39,7 +39,9 @@ the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd 
 }
 \examples{
 \dontrun{
-fit <- fit_cfr(prepare_cfr_data(simulate_linelist()))
+ll <- simulate_linelist(delay = dist.spec::LogNormal(2.4, 0.5))
+fit <- fit_cfr(prepare_cfr_data(ll),
+               delay = dist.spec::LogNormal(2.4, 0.5))
 summarise_cfr(fit)
 }
 }

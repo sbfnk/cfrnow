@@ -54,15 +54,15 @@ library(cfrnow)
 
 # your own onset_date / death_date line list, or a simulated one
 set.seed(1)
-ll <- simulate_linelist(n = 400, cfr = 0.55, onset_days = 45)
+ll <- simulate_linelist(n = 400, cfr = 0.55, onset_days = 45,
+                        delay = dist.spec::Gamma(mean = 12.75, sd = 7))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"))
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 ```
 
 You supply the onset-to-death delay as a
 [dist.spec](https://epiforecasts.io/dist.spec/) distribution via the `delay`
-argument; there is no default, because a sensible delay depends on the pathogen
-and setting. Here the BDBV/Isiro onset-to-death prior is used:
+argument (there is no default). Here the BDBV/Isiro onset-to-death prior is used:
 
 ```{r fit, eval = FALSE}
 library(dist.spec)
@@ -143,14 +143,6 @@ before quoting a number:
 Known gaps, roughly in priority order: time-varying `cfr` (e.g. a random walk on
 `logit(cfr)`); a death-reporting-delay nowcasting layer; stratification (age,
 sex, vaccination); and posterior-predictive checks.
-
-## Status
-
-Early but functional. The model, data preparation, summaries, a vignette and unit
-tests are in place, and `R CMD check` is clean. Lognormal (the default) and gamma
-onset-to-death delays are supported via
-[dist.spec](https://epiforecasts.io/dist.spec/), with recovery timing available
-through a competing-risks fit.
 
 ## Requirements
 

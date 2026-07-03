@@ -1,44 +1,34 @@
-test_that("gamma mean/sd converts to shape/rate with the right moments", {
-  m <- 12.75; s <- 7
-  p <- delay_to_native(m, s, "gamma")
-  # gamma(shape, rate): mean = shape / rate, sd = sqrt(shape) / rate
-  expect_equal(p[["shape"]] / p[["rate"]], m)
-  expect_equal(sqrt(p[["shape"]]) / p[["rate"]], s)
-})
-
-test_that("lognormal mean/sd converts to meanlog/sdlog with the right moments", {
-  m <- 12.75; s <- 7
-  p <- delay_to_native(m, s, "lognormal")
-  expect_equal(exp(p[["meanlog"]] + p[["sdlog"]]^2 / 2), m)
-  expect_equal(sqrt((exp(p[["sdlog"]]^2) - 1)) * m, s)
-})
-
 test_that("simulated delays match the requested mean and sd", {
   set.seed(1)
-  for (fam in cfrnow_families()) {
-    ll <- simulate_linelist(n = 20000, cfr = 1, delay_mean = 12.75,
-                            delay_sd = 7, delay_family = fam)
-    delay <- as.numeric(ll$death_date - ll$onset_date)
-    expect_equal(mean(delay), 12.75, tolerance = 0.3)
-    expect_equal(sd(delay), 7, tolerance = 0.3)
+  specs <- list(dist.spec::LogNormal(mean = 12.75, sd = 7),
+                dist.spec::Gamma(mean = 12.75, sd = 7))
+  for (delay in specs) {
+    ll <- simulate_linelist(n = 20000, cfr = 1, delay = delay)
+    d <- as.numeric(ll$death_date - ll$onset_date)
+    expect_equal(mean(d), 12.75, tolerance = 0.3)
+    expect_equal(sd(d), 7, tolerance = 0.3)
   }
 })
 
-test_that("recovery = TRUE adds recoveries for non-fatal cases only", {
+test_that("a recovery delay adds recoveries for non-fatal cases only", {
   set.seed(1)
-  ll <- simulate_linelist(n = 300, cfr = 0.5, recovery = TRUE)
+  ll <- simulate_linelist(n = 300, cfr = 0.5,
+                          delay = dist.spec::LogNormal(mean = 12.75, sd = 7),
+                          recovery = dist.spec::LogNormal(mean = 21, sd = 9))
   expect_true("recovery_date" %in% names(ll))
   fatal <- !is.na(ll$death_date)
   expect_true(all(is.na(ll$recovery_date[fatal])))     # fatal: no recovery
   expect_true(all(!is.na(ll$recovery_date[!fatal])))   # non-fatal: recovered
-  expect_false("recovery_date" %in% names(simulate_linelist(n = 5)))  # off by default
+  no_rec <- simulate_linelist(n = 5, delay = dist.spec::LogNormal(2, 0.5))
+  expect_false("recovery_date" %in% names(no_rec))
 })
 
-test_that("unsupported families are rejected", {
-  expect_error(delay_to_native(10, 5, "weibull"))
+test_that("unsupported families and prior-parameter delays are rejected", {
   expect_error(delay_native_order("weibull"))
   expect_error(stan_delay_fields(dist.spec::Normal(mean = 5, sd = 1),
                                  "dist_id", "p"))
+  expect_error(sample_delay(5, dist.spec::LogNormal(
+    meanlog = dist.spec::Normal(2, 0.1), sdlog = dist.spec::Normal(0.5, 0.1))))
 })
 
 test_that("stan_delay_fields reads estimated (Normal) native parameters", {

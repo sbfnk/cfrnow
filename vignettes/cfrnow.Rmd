@@ -55,8 +55,8 @@ known CFR of 0.55 sampled part-way through a growing epidemic.
 
 ```{r simulate}
 set.seed(1)
-ll <- simulate_linelist(n = 500, cfr = 0.55, delay_mean = 12.75, delay_sd = 7,
-                        delay_family = "gamma", onset_days = 45)
+ll <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
+                        delay = dist.spec::Gamma(mean = 12.75, sd = 7))
 head(ll)
 ```
 
@@ -78,10 +78,10 @@ round(naive, 3)  # the downward-biased naive ratio
 
 `fit_cfr()` fits the mixture-cure model with cmdstanr. You supply the
 onset-to-death delay as a [dist.spec](https://epiforecasts.io/dist.spec/)
-distribution; there is no default, because a sensible delay depends on the
-pathogen and setting. Give a native parameter a `Normal()` prior to co-estimate
-it, or a fixed number / `Fixed()` to hold it fixed (fixing the whole delay gives
-the Ghani/Nishiura estimator). Here we use the BDBV/Isiro onset-to-death prior.
+distribution (there is no default). Give a native parameter a `Normal()` prior to
+co-estimate it, or a fixed number / `Fixed()` to hold it fixed (fixing the whole
+delay gives the Ghani/Nishiura estimator). Here we use the BDBV/Isiro
+onset-to-death prior.
 This step needs a working CmdStan install and is not run when the vignette is
 built.
 
@@ -158,8 +158,8 @@ Two caveats. In real time, replace `D = Inf` with each case's follow-up
 (`obs_time - onset`) so the delay is corrected for right-truncation. And if you
 estimate from the same deaths you then fit, remember that `fit_cfr()` already
 co-estimates the delay jointly with `cfr` when you pass `Normal()` priors; the
-separate fit earns its keep mainly for a delay taken from historical or external
-data (say a previous outbreak), used as an informed prior or a fixed delay.
+separate fit is mainly for a delay taken from historical or external data (say a
+previous outbreak), used as an informed prior or a fixed delay.
 
 ## Using recovery timing
 
@@ -169,9 +169,9 @@ recoveries that resolve more slowly than deaths (mean 21 vs 12.75 days):
 
 ```{r recovery}
 set.seed(2)
-llr <- simulate_linelist(n = 500, cfr = 0.55, recovery = TRUE,
-                         delay_mean = 12.75, delay_sd = 7,
-                         recovery_mean = 21, recovery_sd = 9, onset_days = 45)
+llr <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
+                         delay = dist.spec::Gamma(mean = 12.75, sd = 7),
+                         recovery = dist.spec::Gamma(mean = 21, sd = 9))
 dr <- prepare_cfr_data(llr, obs_time = max(llr$onset_date) - 3)
 c(deaths = dr$n_death, recoveries = dr$n_recovery, censored = dr$n_cens)
 ```

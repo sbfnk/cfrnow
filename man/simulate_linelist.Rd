@@ -7,13 +7,8 @@
 simulate_linelist(
   n = 200,
   cfr = 0.5,
-  delay_mean = 12.75,
-  delay_sd = 7,
-  delay_family = "gamma",
-  recovery = FALSE,
-  recovery_mean = 21,
-  recovery_sd = 9,
-  recovery_family = "gamma",
+  delay,
+  recovery = NULL,
   onset_start = as.Date("2026-01-01"),
   onset_days = 60
 )
@@ -23,18 +18,11 @@ simulate_linelist(
 
 \item{cfr}{True case fatality ratio.}
 
-\item{delay_mean, delay_sd}{Onset-to-death delay mean and sd (days).}
+\item{delay}{Onset-to-death delay: a dist.spec distribution
+(\code{\link[dist.spec:LogNormal]{dist.spec::LogNormal()}} or \code{\link[dist.spec:Gamma]{dist.spec::Gamma()}}) with fixed parameters.}
 
-\item{delay_family}{Onset-to-death delay family; see \code{\link[=cfrnow_families]{cfrnow_families()}}.}
-
-\item{recovery}{If \code{TRUE}, also simulate non-fatal recoveries and add a
-\code{recovery_date} column.}
-
-\item{recovery_mean, recovery_sd}{Onset-to-recovery delay mean and sd (days),
-used when \code{recovery = TRUE}.}
-
-\item{recovery_family}{Onset-to-recovery delay family; see
-\code{\link[=cfrnow_families]{cfrnow_families()}}.}
+\item{recovery}{Optional onset-to-recovery delay (same form as \code{delay}); when
+given, non-fatal cases get a \code{recovery_date}.}
 
 \item{onset_start}{First possible onset date.}
 
@@ -42,23 +30,22 @@ used when \code{recovery = TRUE}.}
 over it.}
 }
 \value{
-A data frame with \code{onset_date}, \code{death_date} and, if
-\code{recovery = TRUE}, \code{recovery_date}.
+A data frame with \code{onset_date}, \code{death_date} and, if \code{recovery} is
+given, \code{recovery_date}.
 }
 \description{
 Draws onset dates over a window, marks each case fatal with probability
-\code{cfr}, and gives fatal cases an onset-to-death delay from the chosen family
-(parameterised by its mean and sd, matching the model). With
-\code{recovery = TRUE} the non-fatal cases also get an onset-to-recovery delay and
-a \code{recovery_date} column; recoveries resolve more slowly than deaths by
-default,
-which is what drives the resolved-set enrichment the model corrects for.
-Returns a line list with \code{onset_date}, \code{death_date} (\code{NA} for non-fatal
-cases) and, when requested, \code{recovery_date} (\code{NA} for fatal cases). The full,
+\code{cfr}, and gives fatal cases an onset-to-death delay drawn from \code{delay}. Pass
+a \code{recovery} delay to also simulate onset-to-recovery times for the non-fatal
+cases and add a \code{recovery_date} column. Delays are dist.spec distributions
+with fixed parameters, matching what \code{\link[=fit_cfr]{fit_cfr()}} takes; you can specify them
+by mean and sd (e.g. \code{dist.spec::LogNormal(mean = 12.75, sd = 7)}). Returns a
+line list with \code{onset_date}, \code{death_date} (\code{NA} for non-fatal cases) and,
+when \code{recovery} is given, \code{recovery_date} (\code{NA} for fatal cases). The full,
 untruncated outcomes are simulated; pass the result to \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}
 with an \code{obs_time} to induce the real-time truncation.
 }
 \examples{
-simulate_linelist(n = 5, cfr = 0.6)
-simulate_linelist(n = 5, cfr = 0.6, recovery = TRUE)
+simulate_linelist(n = 5, cfr = 0.6,
+                  delay = dist.spec::LogNormal(mean = 12.75, sd = 7))
 }
