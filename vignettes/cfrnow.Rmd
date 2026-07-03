@@ -56,7 +56,7 @@ known CFR of 0.55 sampled part-way through a growing epidemic.
 ```{r simulate}
 set.seed(1)
 ll <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
-                        delay = dist.spec::Gamma(mean = 12.75, sd = 7))
+                        delay = dist.spec::LogNormal(mean = 12.75, sd = 7))
 head(ll)
 ```
 
@@ -123,43 +123,50 @@ sensitivity.
 ## Estimating the delay from data
 
 Rather than hand-picking the prior, you can estimate the onset-to-death delay
-from a line list with
-[primarycensored](https://primarycensored.epinowcast.org/)'s
-`fitdistdoublecens()`, which handles the double interval censoring (onset and
-death each known only to the day) and, in real time, the right-truncation:
+from a line list with [epidist](https://epidist.epinowcast.org/), which fits the
+delay with full Bayesian uncertainty while handling the double interval censoring
+(onset and death each known only to the day) and, in real time, the
+right-truncation. epidist works in continuous time, so pass the daily bounds of
+each event and the observation time (install it from GitHub,
+`epinowcast/epidist`):
 
 ```{r estimate-delay, eval = FALSE}
-library(primarycensored)   # also needs the fitdistrplus package
+library(epidist)
 
 deaths <- ll[!is.na(ll$death_date), ]
-delays <- as.numeric(deaths$death_date - deaths$onset_date)
-cens <- data.frame(left = delays, right = delays + 1,  # death known to the day
-                   pwindow = 1,                          # onset known to the day
-                   D = Inf)                              # no right truncation
-est <- fitdistdoublecens(cens, distr = "lnorm",
-                         start = list(meanlog = 2, sdlog = 1))
-coef(est)   # meanlog ~ 2.40, sdlog ~ 0.54  (mean ~ 12.8 days)
+t0 <- min(deaths$onset_date)
+onset <- as.numeric(deaths$onset_date - t0)
+death <- as.numeric(deaths$death_date - t0)
+
+ld <- as_epidist_linelist_data(
+  onset, onset + 1,          # onset known to the day
+  death, death + 1,          # death known to the day
+  obs_time = max(death) + 1  # retrospective; use the real-time cut-off instead
+)
+fit <- epidist(as_epidist_marginal_model(ld),
+               chains = 2, cores = 2, backend = "cmdstanr")
+pred <- predict_delay_parameters(fit)   # posterior draws of meanlog and sdlog
+c(meanlog = mean(pred$mu), sdlog = mean(pred$sigma))  # ~ 2.37, 0.54 (mean ~ 12.4 d)
 ```
 
-Turn the estimate into a `delay` for `fit_cfr()`, using the standard errors as
-the prior widths (or fix it at the point estimate for the Ghani/Nishiura fit):
+Turn the posterior into a `delay` for `fit_cfr()`, using the posterior sd of each
+parameter as the prior width (or fix it at the posterior mean for the
+Ghani/Nishiura fit):
 
 ```{r use-estimate, eval = FALSE}
-p <- coef(est)
-se <- sqrt(diag(vcov(est)))
 delay <- dist.spec::LogNormal(
-  meanlog = dist.spec::Normal(p[["meanlog"]], se[["meanlog"]]),
-  sdlog = dist.spec::Normal(p[["sdlog"]], se[["sdlog"]])
+  meanlog = dist.spec::Normal(mean(pred$mu), sd(pred$mu)),
+  sdlog = dist.spec::Normal(mean(pred$sigma), sd(pred$sigma))
 )
 fit_cfr(d, delay = delay)
 ```
 
-Two caveats. In real time, replace `D = Inf` with each case's follow-up
-(`obs_time - onset`) so the delay is corrected for right-truncation. And if you
-estimate from the same deaths you then fit, remember that `fit_cfr()` already
-co-estimates the delay jointly with `cfr` when you pass `Normal()` priors; the
-separate fit is mainly for a delay taken from historical or external data (say a
-previous outbreak), used as an informed prior or a fixed delay.
+For a real-time estimate, set `obs_time` to the cut-off so epidist corrects for
+the right-truncation. And if you estimate from the same deaths you then fit,
+remember that `fit_cfr()` already co-estimates the delay jointly with `cfr` when
+you pass `Normal()` priors; the separate fit is mainly for a delay taken from
+historical or external data (say a previous outbreak), used as an informed prior
+or a fixed delay.
 
 ## Using recovery timing
 
