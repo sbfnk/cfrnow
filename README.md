@@ -122,15 +122,15 @@ these before quoting a number:
   silently treated as a survivor, biasing the CFR down. In an outbreak
   where ascertainment is ETC-centred this is the single biggest threat
   to validity.
-- **Deaths reported without lag.** The model assumes a death is in the
-  data by the cut-off. If reporting lags, recent deaths are missing and
-  read as still unresolved, so the real-time CFR comes out too low and
-  revises upward as deaths arrive; treat the latest weeks as
-  provisional. If the line list records when each death was reported
-  (not just when it occurred), check the lag; if it is material, move
-  `obs_time` back to a date by which reporting is near-complete, trading
-  recency for completeness. A reporting-delay correction in the
-  likelihood is future work.
+- **Use the death notification date.** cfrnow counts a case as a death
+  once its `death_date` is on or before the cut-off, so `death_date`
+  should be the date the death entered the data, not the true date of
+  death. If notification is prompt the two coincide; if it lags, the
+  notification date lets the right-censoring absorb the delay and keeps
+  `cfr` correct, whereas the true date of death biases the real-time
+  `cfr` down as not-yet-notified deaths read as unresolved. A lag in
+  notifying an *onset* does not bias `cfr` (it just makes the case
+  absent), unless notification depends on outcome.
 - **Stationary delay and homogeneous CFR.** A single onset-to-death
   delay and CFR over the whole outbreak. As treatment access (supportive
   care, monoclonals) scales up, the true CFR should fall, and a pooled

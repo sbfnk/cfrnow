@@ -9,9 +9,11 @@ prepare_cfr_data(linelist, obs_time = NULL, t0 = NULL, max_delay = 60)
 \arguments{
 \item{linelist}{A data frame with an \code{onset_date} column, an optional
 \code{onset_lower}/\code{onset_upper} onset window, a \code{death_date} column (\code{NA} for
-cases that have not died), and an optional \code{recovery_date} column (\code{NA}
-unless the case is a recorded non-fatal recovery). Dates may be \code{Date} or
-coercible.}
+cases that have not died; use the date the death was notified, i.e. when it
+entered the data, so real-time censoring absorbs any reporting lag), and an
+optional
+\code{recovery_date} column (\code{NA} unless the case is a recorded non-fatal
+recovery). Dates may be \code{Date} or coercible.}
 
 \item{obs_time}{Real-time cut-off (\code{Date} or coercible), or \code{NULL} for a
 retrospective fit in which every recorded death counts and survivors are

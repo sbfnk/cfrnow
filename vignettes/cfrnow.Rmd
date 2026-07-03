@@ -203,15 +203,17 @@ The correction fixes a *timing* bias; it cannot repair the data.
   community death outside a treatment centre) is treated as a survivor and
   biases the CFR down. This is the dominant risk when ascertainment is
   ETC-centred.
-- **Deaths reported without lag.** cfrnow assumes a death is in the data by the
-  cut-off. If reporting lags, recent deaths are missing and read as still
-  unresolved, so the real-time `cfr` comes out too low and revises upward as
-  deaths arrive; treat the latest weeks as provisional. If the line list also
-  records *when* each death was reported (not just when it occurred), check the
-  lag; if it is material, move `obs_time` back to a date by which reporting is
-  near-complete (`prepare_cfr_data()` then censors everyone there, trading
-  recency for completeness). Folding a death-reporting delay into the likelihood
-  is future work.
+- **Use the death *notification* date.** cfrnow counts a case as a death once
+  its `death_date` is on or before the cut-off, so `death_date` should be the
+  date the death entered the data, not the true date of death. If notification is
+  prompt the two coincide. If it lags, the notification date lets the
+  right-censoring absorb the delay (which then reads as onset-to-notification)
+  and `cfr` stays correct, while the true date of death biases the real-time
+  `cfr` down, since deaths not yet notified read as unresolved. If you only have
+  the true date of death, instead set `obs_time` earlier, to a date by which
+  reporting is near-complete (trading recency for completeness). A lag in
+  notifying an *onset* is different: it only makes the case absent, which does
+  not bias `cfr` unless notification depends on outcome.
 - **Weak identifiability early on.** When few deaths have resolved, the CFR
   posterior stays close to its prior; `summarise_cfr()` flags this via
   `cfr_low_information`. Treat a flagged estimate as prior-driven.

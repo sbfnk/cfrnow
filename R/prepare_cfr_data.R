@@ -20,9 +20,11 @@
 #'
 #' @param linelist A data frame with an `onset_date` column, an optional
 #'   `onset_lower`/`onset_upper` onset window, a `death_date` column (`NA` for
-#'   cases that have not died), and an optional `recovery_date` column (`NA`
-#'   unless the case is a recorded non-fatal recovery). Dates may be `Date` or
-#'   coercible.
+#'   cases that have not died; use the date the death was notified, i.e. when it
+#'   entered the data, so real-time censoring absorbs any reporting lag), and an
+#'   optional
+#'   `recovery_date` column (`NA` unless the case is a recorded non-fatal
+#'   recovery). Dates may be `Date` or coercible.
 #' @param obs_time Real-time cut-off (`Date` or coercible), or `NULL` for a
 #'   retrospective fit in which every recorded death counts and survivors are
 #'   treated as fully resolved. In real time, a case with a recovery on or
