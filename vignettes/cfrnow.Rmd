@@ -91,7 +91,7 @@ onset_to_death <- dist.spec::LogNormal(
   sdlog = dist.spec::Normal(0.51, 0.15)
 )
 fit <- fit_cfr(d, delay = onset_to_death)
-summarise_cfr(fit)
+summary(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.579  0.528  0.579  0.625 1.001     3200
 #> 2 delay_mean 12.700 11.500 12.700 13.900 1.000     3400
@@ -195,7 +195,7 @@ onset_to_recovery <- dist.spec::LogNormal(
   sdlog = dist.spec::Normal(0.5, 0.2)
 )
 fit <- fit_cfr(dr, delay = onset_to_death, recovery_delay = onset_to_recovery)
-summarise_cfr(fit)   # also reports recovery_mean / recovery_sd
+summary(fit)   # also reports recovery_mean / recovery_sd
 ```
 
 Using recovery timing sharpens `cfr`: a case still unresolved long after onset is
@@ -222,7 +222,7 @@ The correction fixes a *timing* bias; it cannot repair the data.
   notifying an *onset* is different: it only makes the case absent, which does
   not bias `cfr` unless notification depends on outcome.
 - **Weak identifiability early on.** When few deaths have resolved, the CFR
-  posterior stays close to its prior; `summarise_cfr()` flags this via
+  posterior stays close to its prior; `summary()` flags this via
   `cfr_low_information`. Treat a flagged estimate as prior-driven.
 - **Stationary delay and homogeneous CFR.** A pooled CFR lags reality as
   treatment access scales up; time-varying CFR is future work.

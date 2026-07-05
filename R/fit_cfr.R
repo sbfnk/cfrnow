@@ -1,4 +1,10 @@
-# Native parameter order per family (p1, p2), matching the Stan model.
+#' Native parameter order for a delay family
+#'
+#' The two native parameters in the positional order primarycensored's Stan
+#' functions expect (p1, p2). Doubles as cfrnow's supported-family guard.
+#' @param family Delay family name.
+#' @return Character vector of the two native parameter names.
+#' @noRd
 delay_native_order <- function(family) {
   switch(
     family,
@@ -9,9 +15,15 @@ delay_native_order <- function(family) {
   )
 }
 
-# Parse one native parameter of a delay `dist_spec` into Stan inputs: a fixed
-# value (bare number or Fixed()) or a Normal() prior. dist.spec allows only
-# Normal priors on parameters, which is what the Stan model expects.
+#' Parse one native delay parameter into Stan inputs
+#'
+#' Turns a native parameter (a bare number, `Fixed()`, or a `Normal()` prior)
+#' into the fixed value or prior hyperparameters the Stan model reads. dist.spec
+#' allows only Normal priors on parameters, which is what the model expects.
+#' @param p The parameter: numeric, or a `dist_spec` (`Fixed()` / `Normal()`).
+#' @param name Parameter name, used in error messages.
+#' @return A list with `est`, `fixed`, `prior_mean` and `prior_sd`.
+#' @noRd
 parse_delay_param <- function(p, name) {
   if (is.numeric(p)) {
     return(list(est = 0L, fixed = p, prior_mean = 1, prior_sd = 1))
@@ -33,10 +45,16 @@ parse_delay_param <- function(p, name) {
        call. = FALSE)
 }
 
-# Turn a delay `dist_spec` into named Stan data fields: the family id (under
-# `dist_id_name`) and the two native parameters under prefix `pfx` (fixed values
-# and Normal-prior hyperparameters). Used for both the death (`p`) and recovery
-# (`q`) delays.
+#' Turn a delay `dist_spec` into named Stan data fields
+#'
+#' The family id (under `dist_id_name`) and the two native parameters under
+#' prefix `pfx` (fixed values and Normal-prior hyperparameters). Used for both
+#' the death (`p`) and recovery (`q`) delays.
+#' @param delay A dist.spec delay distribution.
+#' @param dist_id_name Name of the family-id Stan field.
+#' @param pfx Prefix for the two parameter fields.
+#' @return A named list of Stan data fields.
+#' @noRd
 stan_delay_fields <- function(delay, dist_id_name, pfx) {
   if (!inherits(delay, "dist_spec")) {
     stop("delay must be a dist.spec distribution, ",
@@ -62,8 +80,11 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
   out
 }
 
-# A placeholder delay for the recovery slot when recovery is not modelled; its
-# fixed values are never read (the Stan model gates them on `use_recovery`).
+#' Placeholder recovery delay when recovery is not modelled
+#'
+#' Its fixed values are never read; the Stan model gates them on `use_recovery`.
+#' @return A dist.spec LogNormal.
+#' @noRd
 dummy_delay <- function() dist.spec::LogNormal(meanlog = 1, sdlog = 1)
 
 #' Compile the mixture-cure CFR Stan model
@@ -109,7 +130,8 @@ cfrnow_model <- function(...) {
 #'   `Beta(6.6, 13.4)`, mean ~= 0.33).
 #' @param model A compiled `CmdStanModel`; defaults to [cfrnow_model()].
 #' @param chains,parallel_chains,iter_warmup,iter_sampling,seed,... Passed to
-#'   `CmdStanModel$sample()`.
+#'   `CmdStanModel$sample()`. `seed` defaults to `NULL`, so cmdstanr draws a
+#'   random seed; set it for reproducible fits.
 #' @return A `cfrnow_fit` object wrapping the `CmdStanMCMC` fit, `data`, the
 #'   `delay`/`recovery_delay` specifications and whether recovery was modelled.
 #' @examples
@@ -123,14 +145,14 @@ cfrnow_model <- function(...) {
 #'   sdlog = dist.spec::Normal(0.51, 0.15)
 #' )
 #' fit <- fit_cfr(d, delay = onset_to_death)
-#' summarise_cfr(fit)
+#' summary(fit)
 #' }
 #' @export
 fit_cfr <- function(data, delay, recovery_delay = NULL,
                     cfr_a = 6.6, cfr_b = 13.4, model = cfrnow_model(),
                     chains = 4, parallel_chains = chains,
                     iter_warmup = 1000, iter_sampling = 1000,
-                    seed = 20260508, ...) {
+                    seed = NULL, ...) {
   if (!inherits(data, "cfrnow_data")) {
     stop("`data` must come from prepare_cfr_data().", call. = FALSE)
   }

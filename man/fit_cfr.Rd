@@ -15,7 +15,7 @@ fit_cfr(
   parallel_chains = chains,
   iter_warmup = 1000,
   iter_sampling = 1000,
-  seed = 20260508,
+  seed = NULL,
   ...
 )
 }
@@ -45,7 +45,8 @@ factor \code{1 - cfr}.}
 \item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=cfrnow_model]{cfrnow_model()}}.}
 
 \item{chains, parallel_chains, iter_warmup, iter_sampling, seed, ...}{Passed to
-\code{CmdStanModel$sample()}.}
+\code{CmdStanModel$sample()}. \code{seed} defaults to \code{NULL}, so cmdstanr draws a
+random seed; set it for reproducible fits.}
 }
 \value{
 A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data}, the
@@ -65,6 +66,6 @@ onset_to_death <- dist.spec::LogNormal(
   sdlog = dist.spec::Normal(0.51, 0.15)
 )
 fit <- fit_cfr(d, delay = onset_to_death)
-summarise_cfr(fit)
+summary(fit)
 }
 }

@@ -1,9 +1,19 @@
-# Naive deaths / cases ratio (single source of truth for the formula).
+#' Naive deaths / cases ratio
+#'
+#' Single source of truth for the naive-CFR formula.
+#' @param data A `cfrnow_data` list.
+#' @return The naive ratio, or `NA` when there are no cases.
+#' @noRd
 naive_cfr <- function(data) {
   if (data$n_cases == 0) NA_real_ else data$n_deaths / data$n_cases
 }
 
-# Prior sd of the Beta(a, b) CFR prior, for the low-information flag.
+#' Prior sd of a Beta(a, b) distribution
+#'
+#' Used for the CFR low-information flag.
+#' @param a,b Beta shape parameters.
+#' @return The prior standard deviation.
+#' @noRd
 beta_sd <- function(a, b) {
   sqrt(a * b / ((a + b)^2 * (a + b + 1)))
 }
@@ -37,11 +47,11 @@ beta_sd <- function(a, b) {
 #' ll <- simulate_linelist(delay = dist.spec::LogNormal(2.4, 0.5))
 #' fit <- fit_cfr(prepare_cfr_data(ll),
 #'                delay = dist.spec::LogNormal(2.4, 0.5))
-#' summarise_cfr(fit)
+#' summary(fit)
 #' }
 #' @export
-summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
-                          info_tol = 0.9, ...) {
+summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
+                               info_tol = 0.9, ...) {
   if (!inherits(object, "cfrnow_fit")) {
     stop("`object` must come from fit_cfr().", call. = FALSE)
   }
@@ -81,7 +91,7 @@ summarise_cfr <- function(object, probs = c(0.025, 0.5, 0.975),
 
 #' @export
 print.cfrnow_fit <- function(x, ...) {
-  s <- summarise_cfr(x)
+  s <- summary(x)
   message("<cfrnow_fit> ", dist.spec::get_distribution(x$delay), " delay")
   message("  cases: ", x$data$n_cases,
           "   deaths by cut-off: ", x$data$n_deaths,

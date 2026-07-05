@@ -69,7 +69,7 @@ onset-to-death prior is used:
 library(dist.spec)
 onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
 fit <- fit_cfr(d, delay = onset_to_death)
-summarise_cfr(fit)
+summary(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.560  0.505  0.560  0.615 1.001     3100
 #> 2 delay_mean 12.700 11.600 12.700 13.900 1.000     3300
@@ -106,11 +106,10 @@ Your line list needs an `onset_date` column and a `death_date` column
 `onset_lower`/`onset_upper` give an onset window that widens the primary
 censoring, and `recovery_date` marks a non-fatal recovery.
 
-`summarise_cfr()` reports `rhat`/`ess_bulk` and flags
-(`cfr_low_information`) when the CFR posterior has barely moved from its
-prior. That is expected early in an outbreak, when few deaths have
-resolved and the CFR is only weakly identified. Treat a flagged estimate
-as prior-driven.
+`summary()` reports `rhat`/`ess_bulk` and flags (`cfr_low_information`)
+when the CFR posterior has barely moved from its prior. That is expected
+early in an outbreak, when few deaths have resolved and the CFR is only
+weakly identified. Treat a flagged estimate as prior-driven.
 
 ## Assumptions and caveats
 

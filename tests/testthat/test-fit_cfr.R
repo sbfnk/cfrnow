@@ -14,7 +14,7 @@ test_that("retrospective fit recovers a known CFR", {
                                 sdlog = dist.spec::Normal(0.51, 0.15))
   fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
-  s <- summarise_cfr(fit)
+  s <- summary(fit)
   cfr_row <- s[s$quantity == "cfr", ]
   expect_gt(cfr_row[["q97.5"]], 0.45)
   expect_lt(cfr_row[["q2.5"]], 0.45)
@@ -30,7 +30,7 @@ test_that("summary carries convergence diagnostics and identifiability flag", {
                                 sdlog = dist.spec::Normal(0.51, 0.15))
   fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
-  s <- summarise_cfr(fit)
+  s <- summary(fit)
   expect_true(all(c("rhat", "ess_bulk") %in% names(s)))
   expect_true(all(s$rhat < 1.05))                       # well-mixed on ample data
   expect_false(is.null(attr(s, "cfr_low_information")))
@@ -46,7 +46,7 @@ test_that("a fixed delay runs the fixed-F (Ghani/Nishiura) estimator", {
   fit <- fit_cfr(d, delay = dist.spec::LogNormal(meanlog = 2.41, sdlog = 0.51),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
-  s <- summarise_cfr(fit)
+  s <- summary(fit)
   # a fixed delay is constant, so its diagnostics are NA; cfr is still estimated
   expect_true(is.na(s[s$quantity == "delay_mean", "rhat"]))
   expect_gt(s[s$quantity == "cfr", "q97.5"], 0.5)
@@ -66,7 +66,7 @@ test_that("real-time correction lifts the estimate above the naive ratio", {
                                 sdlog = dist.spec::Normal(0.51, 0.15))
   fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
-  s <- summarise_cfr(fit)
+  s <- summary(fit)
   cfr_med <- s[s$quantity == "cfr", "q50"]
   expect_gt(cfr_med, naive)             # corrected > downward-biased naive
 })
@@ -88,7 +88,7 @@ test_that("competing-risks fit uses recovery timing and recovers CFR + F_R", {
     chains = 2, parallel_chains = 2,
     iter_warmup = 500, iter_sampling = 500, refresh = 0
   )
-  s <- summarise_cfr(fit)
+  s <- summary(fit)
   expect_true(all(c("recovery_mean", "recovery_sd") %in% s$quantity))
   cfr <- s[s$quantity == "cfr", ]
   expect_gt(cfr[["q97.5"]], 0.5)

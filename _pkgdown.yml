@@ -11,8 +11,7 @@ reference:
   - cfrnow_model
 - title: Summarise
   contents:
-  - summarise_cfr
-- title: Families and simulation
+  - summary.cfrnow_fit
+- title: Simulation
   contents:
-  - cfrnow_families
   - simulate_linelist

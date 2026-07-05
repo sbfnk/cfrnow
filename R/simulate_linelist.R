@@ -49,3 +49,25 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
   }
   out
 }
+
+#' Draw delays from a dist.spec distribution with fixed parameters
+#'
+#' Used by [simulate_linelist()] for the onset-to-death and onset-to-recovery
+#' delays. Errors if any parameter is a prior rather than a fixed number.
+#' @param n Number of delays to draw.
+#' @param delay A dist.spec delay distribution with fixed parameters.
+#' @return A numeric vector of `n` delays (days).
+#' @noRd
+sample_delay <- function(n, delay) {
+  fam <- dist.spec::get_distribution(delay)
+  pars <- dist.spec::get_parameters(delay)[delay_native_order(fam)]
+  if (!all(vapply(pars, is.numeric, logical(1)))) {
+    stop("simulate_linelist() needs a delay with fixed parameters (numbers), ",
+         "not priors.", call. = FALSE)
+  }
+  switch(
+    fam,
+    lognormal = stats::rlnorm(n, pars[["meanlog"]], pars[["sdlog"]]),
+    gamma = stats::rgamma(n, shape = pars[["shape"]], rate = pars[["rate"]])
+  )
+}
