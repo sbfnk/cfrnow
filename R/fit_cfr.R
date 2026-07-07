@@ -87,6 +87,36 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
 #' @noRd
 dummy_delay <- function() dist.spec::LogNormal(meanlog = 1, sdlog = 1)
 
+#' Default initial values that keep the sampler off degenerate delays
+#'
+#' cmdstan's random inits can start a delay at a near-zero mean, where the
+#' survival probability `1 - F(t)` of every censored case is ~0 and the joint log
+#' density is `-Inf` (cmdstan then warns "Error evaluating the log probability at
+#' the initial value"). This starts each *estimated* native parameter at its prior
+#' mean and the CFR at its prior mean, jittered per chain, all on the natural
+#' scale; fixed parameters carry no sampled value and need none.
+#' @param stan_data The assembled Stan data list.
+#' @return A function suitable for cmdstanr's `init` argument.
+#' @noRd
+cfr_stan_init <- function(stan_data) {
+  function(chain_id = 1) {
+    jit <- function(m) as.array(max(m, 0.01) * stats::runif(1, 0.9, 1.1))
+    cfr0 <- stan_data$cfr_a / (stan_data$cfr_a + stan_data$cfr_b)
+    init <- list(
+      cfr = min(max(cfr0 * stats::runif(1, 0.9, 1.1), 1e-3), 1 - 1e-3)
+    )
+    if (stan_data$p1_est == 1) init$p1_par <- jit(stan_data$p1_prior_mean)
+    if (stan_data$p2_est == 1) init$p2_par <- jit(stan_data$p2_prior_mean)
+    if (stan_data$use_recovery == 1 && stan_data$q1_est == 1) {
+      init$q1_par <- jit(stan_data$q1_prior_mean)
+    }
+    if (stan_data$use_recovery == 1 && stan_data$q2_est == 1) {
+      init$q2_par <- jit(stan_data$q2_prior_mean)
+    }
+    init
+  }
+}
+
 #' Read the Beta shape parameters from a CFR prior
 #'
 #' The CFR prior is a `dist.spec::Beta()` with fixed (numeric) shape parameters;
@@ -171,7 +201,10 @@ cfrnow_model <- function(...) {
 #' @param model A compiled `CmdStanModel`; defaults to [cfrnow_model()].
 #' @param chains,parallel_chains,iter_warmup,iter_sampling,seed,... Passed to
 #'   `CmdStanModel$sample()`. `seed` defaults to `NULL`, so cmdstanr draws a
-#'   random seed; set it for reproducible fits.
+#'   random seed; set it for reproducible fits. Unless you pass your own `init`,
+#'   the sampler starts each estimated delay parameter and the CFR at their prior
+#'   means (jittered per chain), which avoids the degenerate near-zero-delay
+#'   starts that make cmdstan reject the initial log density.
 #' @return A `cfrnow_fit` object wrapping the `CmdStanMCMC` fit, `data`, the
 #'   `delay`/`recovery_delay` specifications and whether recovery was modelled.
 #' @examples
@@ -223,11 +256,13 @@ fit_cfr <- function(data, delay, recovery_delay = NULL, cfr_prior,
       cfr_a = cfr_shapes[["a"]], cfr_b = cfr_shapes[["b"]]
     )
   )
-  fit <- model$sample(
-    data = stan_data, chains = chains, parallel_chains = parallel_chains,
-    iter_warmup = iter_warmup, iter_sampling = iter_sampling,
-    seed = seed, ...
-  )
+  dots <- list(...)
+  if (!("init" %in% names(dots))) dots$init <- cfr_stan_init(stan_data)
+  fit <- do.call(model$sample, c(
+    list(data = stan_data, chains = chains, parallel_chains = parallel_chains,
+         iter_warmup = iter_warmup, iter_sampling = iter_sampling, seed = seed),
+    dots
+  ))
   structure(
     list(fit = fit, data = data, delay = delay,
          recovery_delay = recovery_delay, use_recovery = use_recovery,

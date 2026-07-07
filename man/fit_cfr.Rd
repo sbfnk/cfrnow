@@ -61,7 +61,10 @@ mean and sd instead if that is easier, e.g. \code{Beta(mean = 0.1, sd = 0.1)}.}
 
 \item{chains, parallel_chains, iter_warmup, iter_sampling, seed, ...}{Passed to
 \code{CmdStanModel$sample()}. \code{seed} defaults to \code{NULL}, so cmdstanr draws a
-random seed; set it for reproducible fits.}
+random seed; set it for reproducible fits. Unless you pass your own \code{init},
+the sampler starts each estimated delay parameter and the CFR at their prior
+means (jittered per chain), which avoids the degenerate near-zero-delay
+starts that make cmdstan reject the initial log density.}
 }
 \value{
 A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data}, the
