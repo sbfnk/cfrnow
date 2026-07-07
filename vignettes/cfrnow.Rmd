@@ -220,6 +220,91 @@ recovered case whose recovery is missing stays censored and, as time passes, is
 pushed toward the fatal branch, biasing `cfr` up. The death-only default is
 insensitive to this, so prefer it where discharge recording is patchy.
 
+## Relation to competing-risks estimators
+
+cfrnow is one parameterisation of a competing-risks model: a mixture over the two
+outcomes, with the CFR as an explicit latent-fatal fraction and a parametric
+onset-to-death delay. A natural benchmark is a *non-parametric* competing-risks
+estimate of the same quantity — the Aalen--Johansen cumulative incidence of death,
+or an intercept-only Fine--Gray fit — both available from
+[survival](https://cran.r-project.org/package=survival). These handle censoring
+correctly and make far fewer assumptions, but they only give the cumulative
+incidence up to the *observed* follow-up: they cannot extrapolate the tail of
+cases that have not yet resolved. So early in an outbreak they underestimate the
+eventual CFR (less severely than the naive ratio, but still), and only as cases
+resolve do they converge on it.
+
+```{r cr-helper, eval = FALSE}
+library(survival)
+
+# Non-parametric competing-risks CFR at a cut-off: Aalen-Johansen cumulative
+# incidence of death, and an intercept-only Fine-Gray fit, each read at the
+# longest follow-up. Recoveries are the competing event; unresolved cases are
+# right-censored at the cut-off.
+cr_cfr <- function(ll, obs_time) {
+  obs <- as.Date(obs_time)
+  died      <- !is.na(ll$death_date)    & ll$death_date    <= obs
+  recovered <- !is.na(ll$recovery_date) & ll$recovery_date <= obs & !died
+  time <- as.numeric(obs - ll$onset_date)
+  time[died]      <- as.numeric(ll$death_date    - ll$onset_date)[died]
+  time[recovered] <- as.numeric(ll$recovery_date - ll$onset_date)[recovered]
+  status <- ifelse(died, "death", ifelse(recovered, "recovery", "censored"))
+  keep <- ll$onset_date <= obs & time > 0
+  d <- data.frame(time = time[keep],
+                  status = factor(status[keep],
+                                  levels = c("censored", "death", "recovery")))
+  aj <- survfit(Surv(time, status) ~ 1, data = d)
+  fg <- finegray(Surv(time, status) ~ ., data = d, etype = "death")
+  fg_fit <- survfit(coxph(Surv(fgstart, fgstop, fgstatus) ~ 1,
+                          weights = fgwt, data = fg))
+  c(naive          = mean(d$status == "death"),
+    aalen_johansen = tail(aj$pstate[, "death"], 1),
+    fine_gray      = 1 - tail(fg_fit$surv, 1))
+}
+```
+
+Simulate a line list with a known CFR of 0.5 and compare the estimates at three
+cut-offs — mid-outbreak (heavy censoring), just after the last onsets, and once
+everything has resolved:
+
+```{r cr-compare, eval = FALSE}
+set.seed(42)
+ll <- simulate_linelist(
+  n = 1500, cfr = 0.5, onset_days = 40,
+  delay    = dist.spec::Gamma(mean = 12.75, sd = 7),
+  recovery = dist.spec::Gamma(mean = 21, sd = 9)
+)
+otd <- dist.spec::Gamma(shape = dist.spec::Normal(3.3, 0.5),
+                        rate  = dist.spec::Normal(0.26, 0.05))
+otr <- dist.spec::Gamma(shape = dist.spec::Normal(5.4, 0.8),
+                        rate  = dist.spec::Normal(0.26, 0.05))
+
+for (cut in c("2026-01-25", "2026-02-15", "2026-05-01")) {
+  cr  <- cr_cfr(ll, cut)
+  fit <- fit_cfr(prepare_cfr_data(ll, obs_time = cut),
+                 delay = otd, recovery_delay = otr,
+                 cfr_prior = dist.spec::Beta(1, 1))
+  cfr <- summary(fit)[1, c("q2.5", "q50", "q97.5")]
+  cat(sprintf("%s  naive %.2f  AJ %.2f  FG %.2f  cfrnow %.2f (%.2f-%.2f)\n",
+              cut, cr[["naive"]], cr[["aalen_johansen"]], cr[["fine_gray"]],
+              cfr$q50, cfr$q2.5, cfr$q97.5))
+}
+#> 2026-01-25  naive 0.25  AJ 0.42  FG 0.42  cfrnow 0.46 (0.40-0.53)
+#> 2026-02-15  naive 0.42  AJ 0.51  FG 0.51  cfrnow 0.51 (0.48-0.54)
+#> 2026-05-01  naive 0.50  AJ 0.50  FG 0.50  cfrnow 0.50 (0.47-0.52)
+```
+
+At the early cut-off the Aalen--Johansen and Fine--Gray estimates (0.42) already
+beat the naive ratio (0.25) by using the risk set, but both still fall short of
+the true 0.5 because the unresolved tail is unmodelled; cfrnow's credible interval
+covers the truth. By the mature cut-off all three agree, and cfrnow's parametric
+delay is doing no work. (Aalen--Johansen and Fine--Gray coincide here because
+there are no covariates; Fine--Gray earns its keep when you want covariate effects
+on the sub-distribution hazard, which cfrnow does not currently model.) The lesson
+is the division of labour: reach for cfrnow while the outbreak is young and
+heavily censored, and for a non-parametric competing-risks estimate once follow-up
+is long relative to the onset-to-death delay.
+
 ## Assumptions and caveats
 
 The correction fixes a *timing* bias; it cannot repair the data.
