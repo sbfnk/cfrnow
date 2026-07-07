@@ -12,7 +12,8 @@ test_that("retrospective fit recovers a known CFR", {
   d <- prepare_cfr_data(ll, obs_time = NULL)
   delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
                                 sdlog = dist.spec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
+  fit <- fit_cfr(d, delay = delay, cfr_prior = dist.spec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
   cfr_row <- s[s$quantity == "cfr", ]
@@ -28,7 +29,8 @@ test_that("summary carries convergence diagnostics and identifiability flag", {
   d <- prepare_cfr_data(ll, obs_time = NULL)
   delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
                                 sdlog = dist.spec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
+  fit <- fit_cfr(d, delay = delay, cfr_prior = dist.spec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
   expect_true(all(c("rhat", "ess_bulk") %in% names(s)))
@@ -44,6 +46,7 @@ test_that("a fixed delay runs the fixed-F (Ghani/Nishiura) estimator", {
                           delay = dist.spec::Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)
   fit <- fit_cfr(d, delay = dist.spec::LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = dist.spec::Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
@@ -64,7 +67,8 @@ test_that("real-time correction lifts the estimate above the naive ratio", {
   naive <- d$n_deaths / d$n_cases
   delay <- dist.spec::LogNormal(meanlog = dist.spec::Normal(2.41, 0.2),
                                 sdlog = dist.spec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, chains = 2, parallel_chains = 2,
+  fit <- fit_cfr(d, delay = delay, cfr_prior = dist.spec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
   cfr_med <- s[s$quantity == "cfr", "q50"]
@@ -85,6 +89,7 @@ test_that("competing-risks fit uses recovery timing and recovers CFR + F_R", {
                              rate = dist.spec::Normal(0.26, 0.08)),
     recovery_delay = dist.spec::Gamma(shape = dist.spec::Normal(5, 2),
                                       rate = dist.spec::Normal(0.24, 0.08)),
+    cfr_prior = dist.spec::Beta(1, 1),
     chains = 2, parallel_chains = 2,
     iter_warmup = 500, iter_sampling = 500, refresh = 0
   )

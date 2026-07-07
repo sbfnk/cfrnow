@@ -46,7 +46,8 @@ beta_sd <- function(a, b) {
 #' \dontrun{
 #' ll <- simulate_linelist(delay = dist.spec::LogNormal(2.4, 0.5))
 #' fit <- fit_cfr(prepare_cfr_data(ll),
-#'                delay = dist.spec::LogNormal(2.4, 0.5))
+#'                delay = dist.spec::LogNormal(2.4, 0.5),
+#'                cfr_prior = dist.spec::Beta(1, 1))
 #' summary(fit)
 #' }
 #' @export
@@ -79,7 +80,8 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
 
   cfr_draws <- as.numeric(posterior::extract_variable(draws, "cfr"))
   cfr_post_sd <- stats::sd(cfr_draws)
-  cfr_prior_sd <- beta_sd(object$cfr_prior[["a"]], object$cfr_prior[["b"]])
+  cfr_prior_sd <- beta_sd(object$cfr_prior_shapes[["a"]],
+                          object$cfr_prior_shapes[["b"]])
 
   attr(out, "naive_cfr") <- naive_cfr(object$data)
   attr(out, "n_cases") <- object$data$n_cases

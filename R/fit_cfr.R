@@ -87,6 +87,30 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
 #' @noRd
 dummy_delay <- function() dist.spec::LogNormal(meanlog = 1, sdlog = 1)
 
+#' Read the Beta shape parameters from a CFR prior
+#'
+#' The CFR prior is a `dist.spec::Beta()` with fixed (numeric) shape parameters;
+#' returns them as the `c(a, b)` the Stan model reads. Rejects anything that is
+#' not a fixed Beta so a mis-specified prior fails loudly rather than silently.
+#' @param cfr_prior A dist.spec Beta distribution.
+#' @return A named numeric vector `c(a, b)`.
+#' @noRd
+parse_cfr_prior <- function(cfr_prior) {
+  if (!inherits(cfr_prior, "dist_spec")) {
+    stop("`cfr_prior` must be a dist.spec distribution, ",
+         "e.g. dist.spec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
+  }
+  if (dist.spec::get_distribution(cfr_prior) != "beta") {
+    stop("`cfr_prior` must be a Beta() distribution.", call. = FALSE)
+  }
+  pars <- dist.spec::get_parameters(cfr_prior)
+  if (!all(vapply(pars[c("shape1", "shape2")], is.numeric, logical(1)))) {
+    stop("`cfr_prior` must have fixed (numeric) shape parameters, not priors.",
+         call. = FALSE)
+  }
+  c(a = pars$shape1, b = pars$shape2)
+}
+
 #' Compile the mixture-cure CFR Stan model
 #'
 #' Compiles `inst/stan/cfrnow.stan`, resolving the vendored primarycensored
@@ -121,13 +145,29 @@ cfrnow_model <- function(...) {
 #'   (mean ~= 12.75 d).
 #' @param recovery_delay Optional onset-to-recovery delay (a dist.spec
 #'   distribution, same conventions as `delay`). When supplied, cfrnow fits the
-#'   competing-risks model that uses recovery *timing*: a recovered case
-#'   contributes `(1 - cfr) * f_R(r)` and an unresolved case contributes
-#'   `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`. When `NULL` (default),
-#'   recovery timing is ignored and recovered cases contribute only the cure
-#'   factor `1 - cfr`.
-#' @param cfr_a,cfr_b Beta prior on the case fatality ratio (default
-#'   `Beta(6.6, 13.4)`, mean ~= 0.33).
+#'   two-outcome mixture-cure model that also uses recovery *timing*: a fatal
+#'   case (probability `cfr`) dies at `F_D` and a non-fatal case recovers at
+#'   `F_R`, so a recovered case contributes `(1 - cfr) * f_R(r)` and an
+#'   unresolved case contributes `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`.
+#'   This is a mixture over the two outcomes, not a cause-specific-hazards
+#'   competing-risks model. When `NULL` (default), recovery timing is ignored
+#'   and recovered cases contribute only the cure factor `1 - cfr`. Note this
+#'   mode assumes recoveries among the unresolved are recorded: an actually
+#'   recovered case whose recovery is missing stays censored and, as time
+#'   passes, is pushed toward the fatal branch, biasing `cfr` *up* (the mirror
+#'   of incomplete death ascertainment). The death-only default is insensitive
+#'   to this.
+#' @param cfr_prior Prior on the case fatality ratio, as a
+#'   [dist.spec::Beta()] with fixed shape parameters; required, with no default.
+#'   Because the CFR is only weakly identified early in an outbreak (few deaths
+#'   resolved), this prior can dominate, so choose it deliberately rather than
+#'   reaching for a default. Some reference choices and what they imply (the
+#'   Beta "prior sample size" is `shape1 + shape2`, so larger sums pull harder):
+#'   `Beta(1, 1)` is uniform on \[0, 1] (weakly informative, mean 0.5);
+#'   `Beta(1, 9)` has mean 0.1 and favours a low CFR;
+#'   `Beta(6.6, 13.4)` has mean 0.33 and is appropriate only for a
+#'   high-fatality pathogen (it is roughly the BDBV/Isiro prior). Specify by
+#'   mean and sd instead if that is easier, e.g. `Beta(mean = 0.1, sd = 0.1)`.
 #' @param model A compiled `CmdStanModel`; defaults to [cfrnow_model()].
 #' @param chains,parallel_chains,iter_warmup,iter_sampling,seed,... Passed to
 #'   `CmdStanModel$sample()`. `seed` defaults to `NULL`, so cmdstanr draws a
@@ -144,12 +184,13 @@ cfrnow_model <- function(...) {
 #'   meanlog = dist.spec::Normal(2.41, 0.2),
 #'   sdlog = dist.spec::Normal(0.51, 0.15)
 #' )
-#' fit <- fit_cfr(d, delay = onset_to_death)
+#' fit <- fit_cfr(d, delay = onset_to_death,
+#'                cfr_prior = dist.spec::Beta(6.6, 13.4))
 #' summary(fit)
 #' }
 #' @export
-fit_cfr <- function(data, delay, recovery_delay = NULL,
-                    cfr_a = 6.6, cfr_b = 13.4, model = cfrnow_model(),
+fit_cfr <- function(data, delay, recovery_delay = NULL, cfr_prior,
+                    model = cfrnow_model(),
                     chains = 4, parallel_chains = chains,
                     iter_warmup = 1000, iter_sampling = 1000,
                     seed = NULL, ...) {
@@ -160,6 +201,12 @@ fit_cfr <- function(data, delay, recovery_delay = NULL,
     stop("supply a `delay` (an onset-to-death dist.spec distribution).",
          call. = FALSE)
   }
+  if (missing(cfr_prior)) {
+    stop("supply a `cfr_prior` (a dist.spec Beta() on the CFR); ",
+         "there is no default. See ?fit_cfr for reference choices.",
+         call. = FALSE)
+  }
+  cfr_shapes <- parse_cfr_prior(cfr_prior)
   use_recovery <- !is.null(recovery_delay)
 
   stan_data <- c(
@@ -173,7 +220,7 @@ fit_cfr <- function(data, delay, recovery_delay = NULL,
       primary_id = primarycensored::pcd_stan_dist_id("uniform",
                                                      type = "primary"),
       use_recovery = as.integer(use_recovery),
-      cfr_a = cfr_a, cfr_b = cfr_b
+      cfr_a = cfr_shapes[["a"]], cfr_b = cfr_shapes[["b"]]
     )
   )
   fit <- model$sample(
@@ -184,7 +231,8 @@ fit_cfr <- function(data, delay, recovery_delay = NULL,
   structure(
     list(fit = fit, data = data, delay = delay,
          recovery_delay = recovery_delay, use_recovery = use_recovery,
-         cfr_prior = c(a = cfr_a, b = cfr_b)),
+         cfr_prior = cfr_prior,
+         cfr_prior_shapes = c(a = cfr_shapes[["a"]], b = cfr_shapes[["b"]])),
     class = "cfrnow_fit"
   )
 }

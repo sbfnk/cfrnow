@@ -42,6 +42,20 @@ test_that("stan_delay_fields reads estimated (Normal) native parameters", {
   expect_equal(ds$p2_prior_sd, 0.15)
 })
 
+test_that("parse_cfr_prior accepts a fixed Beta and rejects everything else", {
+  expect_equal(parse_cfr_prior(dist.spec::Beta(6.6, 13.4)),
+               c(a = 6.6, b = 13.4))
+  expect_equal(parse_cfr_prior(dist.spec::Beta(mean = 0.1, sd = 0.1))[["a"]],
+               0.1 * (0.1 * 0.9 / 0.1^2 - 1))
+  expect_error(parse_cfr_prior(5), "dist.spec distribution")
+  expect_error(parse_cfr_prior(dist.spec::Gamma(shape = 3, rate = 1)), "Beta")
+  expect_error(
+    parse_cfr_prior(dist.spec::Beta(shape1 = dist.spec::Normal(2, 0.1),
+                                    shape2 = 5)),
+    "fixed"
+  )
+})
+
 test_that("stan_delay_fields reads a fixed delay (fixed-F), with a q prefix too", {
   d <- dist.spec::Gamma(shape = 3, rate = 0.24)
   ds <- stan_delay_fields(d, "recovery_dist_id", "q")

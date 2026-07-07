@@ -8,8 +8,7 @@ fit_cfr(
   data,
   delay,
   recovery_delay = NULL,
-  cfr_a = 6.6,
-  cfr_b = 13.4,
+  cfr_prior,
   model = cfrnow_model(),
   chains = 4,
   parallel_chains = chains,
@@ -33,14 +32,30 @@ example the BDBV/Isiro onset-to-death prior is a \code{LogNormal} with
 
 \item{recovery_delay}{Optional onset-to-recovery delay (a dist.spec
 distribution, same conventions as \code{delay}). When supplied, cfrnow fits the
-competing-risks model that uses recovery \emph{timing}: a recovered case
-contributes \code{(1 - cfr) * f_R(r)} and an unresolved case contributes
-\code{cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))}. When \code{NULL} (default),
-recovery timing is ignored and recovered cases contribute only the cure
-factor \code{1 - cfr}.}
+two-outcome mixture-cure model that also uses recovery \emph{timing}: a fatal
+case (probability \code{cfr}) dies at \code{F_D} and a non-fatal case recovers at
+\code{F_R}, so a recovered case contributes \code{(1 - cfr) * f_R(r)} and an
+unresolved case contributes \code{cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))}.
+This is a mixture over the two outcomes, not a cause-specific-hazards
+competing-risks model. When \code{NULL} (default), recovery timing is ignored
+and recovered cases contribute only the cure factor \code{1 - cfr}. Note this
+mode assumes recoveries among the unresolved are recorded: an actually
+recovered case whose recovery is missing stays censored and, as time
+passes, is pushed toward the fatal branch, biasing \code{cfr} \emph{up} (the mirror
+of incomplete death ascertainment). The death-only default is insensitive
+to this.}
 
-\item{cfr_a, cfr_b}{Beta prior on the case fatality ratio (default
-\code{Beta(6.6, 13.4)}, mean ~= 0.33).}
+\item{cfr_prior}{Prior on the case fatality ratio, as a
+\code{\link[dist.spec:Beta]{dist.spec::Beta()}} with fixed shape parameters; required, with no default.
+Because the CFR is only weakly identified early in an outbreak (few deaths
+resolved), this prior can dominate, so choose it deliberately rather than
+reaching for a default. Some reference choices and what they imply (the
+Beta "prior sample size" is \code{shape1 + shape2}, so larger sums pull harder):
+\code{Beta(1, 1)} is uniform on [0, 1] (weakly informative, mean 0.5);
+\code{Beta(1, 9)} has mean 0.1 and favours a low CFR;
+\code{Beta(6.6, 13.4)} has mean 0.33 and is appropriate only for a
+high-fatality pathogen (it is roughly the BDBV/Isiro prior). Specify by
+mean and sd instead if that is easier, e.g. \code{Beta(mean = 0.1, sd = 0.1)}.}
 
 \item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=cfrnow_model]{cfrnow_model()}}.}
 
@@ -65,7 +80,8 @@ onset_to_death <- dist.spec::LogNormal(
   meanlog = dist.spec::Normal(2.41, 0.2),
   sdlog = dist.spec::Normal(0.51, 0.15)
 )
-fit <- fit_cfr(d, delay = onset_to_death)
+fit <- fit_cfr(d, delay = onset_to_death,
+               cfr_prior = dist.spec::Beta(6.6, 13.4))
 summary(fit)
 }
 }
