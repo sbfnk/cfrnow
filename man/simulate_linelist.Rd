@@ -45,6 +45,13 @@ when \code{recovery} is given, \code{recovery_date} (\code{NA} for fatal cases).
 untruncated outcomes are simulated; pass the result to \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}
 with an \code{obs_time} to induce the real-time truncation.
 }
+\details{
+Data are generated to match the model's daily interval-censoring: each case's
+true onset falls uniformly within its recorded day, and the event day is the
+floor of the continuous onset-plus-delay time. So the recorded day-level
+delays are exactly a doubly-interval-censored draw, which makes the simulator
+suitable for checking calibration, not only rough recovery.
+}
 \examples{
 simulate_linelist(n = 5, cfr = 0.6,
                   delay = dist.spec::LogNormal(mean = 12.75, sd = 7))

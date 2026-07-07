@@ -11,6 +11,12 @@
 #' untruncated outcomes are simulated; pass the result to [prepare_cfr_data()]
 #' with an `obs_time` to induce the real-time truncation.
 #'
+#' Data are generated to match the model's daily interval-censoring: each case's
+#' true onset falls uniformly within its recorded day, and the event day is the
+#' floor of the continuous onset-plus-delay time. So the recorded day-level
+#' delays are exactly a doubly-interval-censored draw, which makes the simulator
+#' suitable for checking calibration, not only rough recovery.
+#'
 #' @param n Number of cases.
 #' @param cfr True case fatality ratio.
 #' @param delay Onset-to-death delay: a dist.spec distribution
@@ -35,16 +41,20 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
   }
   onset <- as.Date(onset_start) + sample.int(onset_days, n, replace = TRUE) - 1
   fatal <- stats::runif(n) < cfr
+  # Sub-day onset offset: the true onset falls uniformly within its recorded day.
+  onset_frac <- stats::runif(n)
 
   otd <- sample_delay(n, delay)
   death_date <- as.Date(rep(NA, n))
-  death_date[fatal] <- onset[fatal] + round(otd[fatal])
+  # Event day = floor of the continuous onset-plus-delay time, so day-level
+  # delays are a genuine doubly-interval-censored draw.
+  death_date[fatal] <- onset[fatal] + floor(onset_frac[fatal] + otd[fatal])
   out <- data.frame(onset_date = onset, death_date = death_date)
 
   if (!is.null(recovery)) {
     otr <- sample_delay(n, recovery)
     recovery_date <- as.Date(rep(NA, n))
-    recovery_date[!fatal] <- onset[!fatal] + round(otr[!fatal])
+    recovery_date[!fatal] <- onset[!fatal] + floor(onset_frac[!fatal] + otr[!fatal])
     out$recovery_date <- recovery_date
   }
   out
