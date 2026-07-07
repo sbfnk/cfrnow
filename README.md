@@ -36,8 +36,8 @@ uncertainty propagated. The enrichment bias is avoided because
 unresolved cases are right-censored, not dropped. So cfrnow needs only
 death timing and who is still a case, and does not depend on recovery
 dates being recorded. When they are recorded, supplying a
-`recovery_delay` fits a competing-risks model that also uses the
-recovery *timing* (`(1 - cfr) f_R(r)` for a recovery at `r`), which
+`recovery_delay` fits a two-outcome mixture-cure model that also uses
+the recovery *timing* (`(1 - cfr) f_R(r)` for a recovery at `r`), which
 sharpens the estimate.
 
 Onset dates are interval-censored and, in real-time mode, `F` is
@@ -57,7 +57,7 @@ ll <- simulate_linelist(n = 400, cfr = 0.55, onset_days = 45,
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"))
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 #>    cases   deaths censored 
-#>      400      177      223
+#>      400      180      220
 ```
 
 You supply the onset-to-death delay as a
@@ -65,10 +65,16 @@ You supply the onset-to-death delay as a
 `delay` argument (there is no default). Here the BDBV/Isiro
 onset-to-death prior is used:
 
+You also supply a prior on the CFR as a `dist.spec::Beta()` (there is no
+default: the CFR is weakly identified early on, so the prior can
+dominate and should be chosen deliberately — `Beta(1, 1)` is uniform,
+`Beta(1, 9)` favours a low CFR, and `Beta(6.6, 13.4)` (mean 0.33) suits
+a high-fatality pathogen).
+
 ``` r
 library(dist.spec)
 onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
-fit <- fit_cfr(d, delay = onset_to_death)
+fit <- fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(1, 1))
 summary(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.560  0.505  0.560  0.615 1.001     3100
@@ -81,25 +87,27 @@ reduces to the naive ratio with the delay as a nuisance.
 
 Give a native parameter a `Normal()` prior to co-estimate it, or a fixed
 number / `Fixed()` to hold it fixed; supply a `Gamma()` for a different
-family, or a `recovery_delay` for the competing-risks fit:
+family, or a `recovery_delay` for the two-outcome fit:
 
 ``` r
-fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))  # gamma
-fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))               # fixed-F
-fit_cfr(d, delay = onset_to_death,
-        recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))   # competing risks
+fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)),
+        cfr_prior = Beta(1, 1))                                           # gamma
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+        cfr_prior = Beta(1, 1))                                           # fixed-F
+fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(1, 1),
+        recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))   # two-outcome
 ```
 
 Which of these to use follows from your data: onset and death dates give
 the default death-only fit; reliable recovery dates let you add a
-`recovery_delay` for the competing-risks fit; and a delay you trust from
-elsewhere can be fixed for the Ghani/Nishiura estimator.
+`recovery_delay` for the two-outcome fit that also uses recovery timing;
+and a delay you trust from elsewhere can be fixed for the Ghani/Nishiura
+estimator.
 
 You can also estimate the onset-to-death delay from a line list with
-[primarycensored](https://primarycensored.epinowcast.org/)’s
-`fitdistdoublecens()` (which handles the interval censoring and
-right-truncation) and feed it in as the `delay` — see
-`vignette("cfrnow")`.
+[epidist](https://epidist.epinowcast.org/) (which handles the double
+interval censoring and, in real time, the right-truncation) and feed it
+in as the `delay` — see `vignette("cfrnow")`.
 
 Your line list needs an `onset_date` column and a `death_date` column
 (`NA` for cases that have not died). Optional columns:
@@ -127,9 +135,14 @@ these before quoting a number:
   death. If notification is prompt the two coincide; if it lags, the
   notification date lets the right-censoring absorb the delay and keeps
   `cfr` correct, whereas the true date of death biases the real-time
-  `cfr` down as not-yet-notified deaths read as unresolved. A lag in
-  notifying an *onset* does not bias `cfr` (it just makes the case
-  absent), unless notification depends on outcome.
+  `cfr` down as not-yet-notified deaths read as unresolved. When
+  notification lags, the delay the model works with is
+  onset-to-*notification*, not the biological onset-to-death, so read
+  `delay_mean`/`delay_sd` (and any biological delay prior you supply)
+  with that in mind. If there is no notification delay, the two coincide
+  and plain death dates are fine. A lag in notifying an *onset* does not
+  bias `cfr` (it just makes the case absent), unless notification
+  depends on outcome.
 - **Stationary delay and homogeneous CFR.** A single onset-to-death
   delay and CFR over the whole outbreak. As treatment access (supportive
   care, monoclonals) scales up, the true CFR should fall, and a pooled
@@ -140,10 +153,16 @@ these before quoting a number:
   “probably cured”. With sparse data the family is not identifiable from
   the line list, so check sensitivity by refitting with a
   `dist.spec::Gamma()` delay.
-- **Recovery timing leans on discharge data.** The competing-risks fit
-  is only as good as the recovery dates and the recovery-delay prior;
-  where discharge recording is patchy, the death-only default is the
-  safer choice.
+- **Recovery timing leans on complete discharge data.** The two-outcome
+  fit is only as good as the recovery dates and the recovery-delay
+  prior. It also assumes recoveries among the unresolved are recorded:
+  an actually recovered case whose recovery is missing stays censored
+  and, as time since onset grows, gets pushed toward the fatal branch,
+  biasing `cfr` *up* — the mirror image of the
+  incomplete-death-ascertainment bias above. The death-only default is
+  insensitive to unrecorded recoveries (a non-fatal case contributes
+  `1 - cfr` either way), so where discharge recording is patchy it is
+  the safer choice.
 
 ## Roadmap
 

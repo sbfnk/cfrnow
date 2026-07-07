@@ -8,7 +8,7 @@
 //   - an observed recovery at delay r   -> (1 - cfr) * f_R(r)   [use_recovery]
 //   - a resolved non-death, time unknown -> (1 - cfr)           [retrospective]
 //   - still unresolved at elapsed time t ->
-//       use_recovery: cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))   (competing risks)
+//       use_recovery: cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))   (two-outcome mixture)
 //       otherwise:    1 - cfr * F_D(t)                                (death only)
 // With the delays fixed and recovery off this is the Ghani/Nishiura estimator.
 //
@@ -51,7 +51,7 @@ data {
   int<lower=0> n_cens;
   vector<lower=0>[n_cens] censor_time;
   vector<lower=0>[n_cens] censor_width;
-  // Whether to model the onset-to-recovery delay (competing risks).
+  // Whether to model the onset-to-recovery delay (two-outcome mixture).
   int<lower=0, upper=1> use_recovery;
   int<lower=1> primary_id;
   // Onset-to-death delay family + native parameters (p1, p2).
@@ -136,7 +136,7 @@ model {
     real fbar_d = primarycensored_cdf(censor_time[i] | dist_id, params,
         censor_width[i], 0.0, positive_infinity(), primary_id, primary_params);
     if (use_recovery == 1) {
-      // Competing risks: P(neither dead nor recovered by t).
+      // Two-outcome mixture: P(fatal not yet dead) + P(non-fatal not yet recovered).
       real fbar_r = primarycensored_cdf(censor_time[i] | recovery_dist_id,
           rparams, censor_width[i], 0.0, positive_infinity(),
           primary_id, primary_params);
