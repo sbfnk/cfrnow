@@ -19,31 +19,23 @@ model, built for collaborators who work in R.
 
 ## Why
 
-The naive `deaths / cases` ratio is biased downward in real time: recent
-cases have not yet had time to die. Restricting to cases with a
-*resolved* outcome (`deaths / (deaths + recoveries)`) swaps that for an
-upward bias, because deaths resolve faster than recoveries, so the
-resolved set is enriched for deaths at any mid-outbreak cut-off.
+The naive `deaths / cases` ratio underestimates in real time: recent
+cases have not yet had time to die. Restricting to *resolved* cases,
+`deaths / (deaths + recoveries)`, overestimates instead, because deaths
+resolve faster than recoveries, so the resolved set is enriched for
+deaths.
 
-`cfrnow` avoids conditioning on resolution at all. Each case is fatal
-with probability `cfr`; a fatal case dies at an interval-censored
-onset-to-death delay `F`; every case still alive at the cut-off is
-right-censored, contributing the mixture-cure survival term
-`1 - cfr * F(t)`, the probability that it is either non-fatal or fatal
-but not yet resolved. With `F` fixed this is the Ghani/Nishiura
-`deaths / sum_i F(t_i)` estimator; here `F` is co-estimated and its
-uncertainty propagated. The enrichment bias is avoided because
-unresolved cases are right-censored, not dropped. So cfrnow needs only
-death timing and who is still a case, and does not depend on recovery
-dates being recorded. When they are recorded, supplying a
-`recovery_delay` fits a two-outcome mixture-cure model that also uses
-the recovery *timing* (`(1 - cfr) f_R(r)` for a recovery at `r`), which
-sharpens the estimate.
-
-Onset dates are interval-censored and, in real-time mode, `F` is
-right-truncated at the cut-off. Both are handled by the analytical
-censored-CDF machinery vendored from
-[`primarycensored`](https://primarycensored.epinowcast.org/).
+`cfrnow` conditions on neither. Each case is fatal with probability
+`cfr`; a fatal case dies at an interval-censored onset-to-death delay
+`F`; a case still unresolved at the cut-off is right-censored,
+contributing `1 - cfr * F(t)` (it is non-fatal, or fatal but not yet
+resolved). With `F` fixed this is the Ghani/Nishiura estimator; here `F`
+is co-estimated and its uncertainty propagated. Recovery dates are
+optional — when recorded, a `recovery_delay` adds a two-outcome fit that
+also uses recovery *timing* (`(1 - cfr) f_R(r)`), sharpening the
+estimate. Onset interval-censoring and real-time right-truncation of `F`
+are handled by
+[primarycensored](https://primarycensored.epinowcast.org/).
 
 ## Usage
 
@@ -60,16 +52,15 @@ c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 #>      400      180      220
 ```
 
-You supply the onset-to-death delay as a
-[dist.spec](https://epiforecasts.io/dist.spec/) distribution via the
-`delay` argument (there is no default). Here the BDBV/Isiro
-onset-to-death prior is used:
-
-You also supply a prior on the CFR as a `dist.spec::Beta()` (there is no
-default: the CFR is weakly identified early on, so the prior can
-dominate and should be chosen deliberately — `Beta(1, 1)` is uniform,
-`Beta(1, 9)` favours a low CFR, and `Beta(6.6, 13.4)` (mean 0.33) suits
-a high-fatality pathogen).
+Supply the onset-to-death `delay` and a `cfr_prior` as
+[dist.spec](https://epiforecasts.io/dist.spec/) distributions — neither
+has a default. In the delay, a native parameter can be a `Normal()`
+prior (co-estimated) or a fixed number (held fixed; fixing the whole
+delay gives the Ghani/Nishiura estimator). The `cfr_prior` is a `Beta()`
+and matters because the CFR is weakly identified early on: `Beta(1, 1)`
+is uniform, `Beta(1, 9)` favours a low CFR, and `Beta(6.6, 13.4)` (mean
+0.33) suits a high-fatality pathogen. Here we use the BDBV/Isiro
+onset-to-death prior:
 
 ``` r
 library(dist.spec)
@@ -82,12 +73,9 @@ summary(fit)
 #> 3   delay_sd  7.100  6.200  7.000  8.200 1.000     3000
 ```
 
-Pass `obs_time = NULL` for a retrospective (fully-resolved) fit, which
-reduces to the naive ratio with the delay as a nuisance.
-
-Give a native parameter a `Normal()` prior to co-estimate it, or a fixed
-number / `Fixed()` to hold it fixed; supply a `Gamma()` for a different
-family, or a `recovery_delay` for the two-outcome fit:
+Pass `obs_time = NULL` for a retrospective fit (it reduces to the naive
+ratio with the delay as a nuisance). Swap the family or add recovery
+timing:
 
 ``` r
 fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)),
@@ -98,26 +86,18 @@ fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(1, 1),
         recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))   # two-outcome
 ```
 
-Which of these to use follows from your data: onset and death dates give
-the default death-only fit; reliable recovery dates let you add a
-`recovery_delay` for the two-outcome fit that also uses recovery timing;
-and a delay you trust from elsewhere can be fixed for the Ghani/Nishiura
-estimator.
-
-You can also estimate the onset-to-death delay from a line list with
+To estimate the delay from a line list instead, use
 [epidist](https://epidist.epinowcast.org/) (which handles the double
-interval censoring and, in real time, the right-truncation) and feed it
-in as the `delay` — see `vignette("cfrnow")`.
+interval censoring and real-time right-truncation) and feed it in as the
+`delay` — see `vignette("cfrnow")`, which also benchmarks cfrnow against
+Aalen–Johansen and Fine–Gray.
 
-Your line list needs an `onset_date` column and a `death_date` column
-(`NA` for cases that have not died). Optional columns:
-`onset_lower`/`onset_upper` give an onset window that widens the primary
-censoring, and `recovery_date` marks a non-fatal recovery.
-
-`summary()` reports `rhat`/`ess_bulk` and flags (`cfr_low_information`)
-when the CFR posterior has barely moved from its prior. That is expected
-early in an outbreak, when few deaths have resolved and the CFR is only
-weakly identified. Treat a flagged estimate as prior-driven.
+Your line list needs `onset_date` and `death_date` (`NA` for cases that
+have not died). Optional: `onset_lower`/`onset_upper` widen the onset
+censoring, and `recovery_date` marks a non-fatal recovery. `summary()`
+reports `rhat`/`ess_bulk` and flags `cfr_low_information` when the CFR
+posterior has barely moved from its prior — expected early on, when the
+estimate is prior-driven.
 
 ## Assumptions and caveats
 
@@ -125,44 +105,32 @@ The correction fixes a *timing* bias; it cannot repair the data. Read
 these before quoting a number:
 
 - **Complete death ascertainment.** A death that never reaches the line
-  list (for example a community death outside a treatment centre) is
-  silently treated as a survivor, biasing the CFR down. In an outbreak
-  where ascertainment is ETC-centred this is the single biggest threat
-  to validity.
-- **Use the death notification date.** cfrnow counts a case as a death
-  once its `death_date` is on or before the cut-off, so `death_date`
-  should be the date the death entered the data, not the true date of
-  death. If notification is prompt the two coincide; if it lags, the
-  notification date lets the right-censoring absorb the delay and keeps
-  `cfr` correct, whereas the true date of death biases the real-time
-  `cfr` down as not-yet-notified deaths read as unresolved. When
-  notification lags, the delay the model works with is
-  onset-to-*notification*, not the biological onset-to-death, so read
-  `delay_mean`/`delay_sd` (and any biological delay prior you supply)
-  with that in mind. If there is no notification delay, the two coincide
-  and plain death dates are fine. A lag in notifying an *onset* does not
-  bias `cfr` (it just makes the case absent), unless notification
-  depends on outcome.
-- **Stationary delay and homogeneous CFR.** A single onset-to-death
-  delay and CFR over the whole outbreak. As treatment access (supportive
-  care, monoclonals) scales up, the true CFR should fall, and a pooled
-  estimate lags reality precisely when that matters. Time-varying CFR is
-  on the roadmap below.
+  list (say a community death outside a treatment centre) is treated as
+  a survivor and biases the CFR down — the biggest threat where
+  ascertainment is ETC-centred.
+- **Use the death notification date** in `death_date`, not the true date
+  of death: a case counts as a death once its `death_date` is on or
+  before the cut-off. If notification lags, this lets the censoring
+  absorb the delay and keeps `cfr` correct — but the delay the model
+  then works with is onset-to-*notification*, so read
+  `delay_mean`/`delay_sd` (and any biological delay prior) with that in
+  mind. With no notification lag, plain death dates are fine. A lag in
+  notifying an *onset* does not bias `cfr` unless notification depends
+  on outcome.
+- **Stationary delay and homogeneous CFR.** One delay and CFR over the
+  whole outbreak; as treatment scales up the true CFR should fall, and a
+  pooled estimate lags reality. Time-varying CFR is on the roadmap.
 - **Delay family is chosen, not estimated.** Gamma and lognormal differ
-  in tail weight, which affects how quickly a recent case counts as
-  “probably cured”. With sparse data the family is not identifiable from
-  the line list, so check sensitivity by refitting with a
-  `dist.spec::Gamma()` delay.
-- **Recovery timing leans on complete discharge data.** The two-outcome
-  fit is only as good as the recovery dates and the recovery-delay
-  prior. It also assumes recoveries among the unresolved are recorded:
-  an actually recovered case whose recovery is missing stays censored
-  and, as time since onset grows, gets pushed toward the fatal branch,
-  biasing `cfr` *up* — the mirror image of the
-  incomplete-death-ascertainment bias above. The death-only default is
-  insensitive to unrecorded recoveries (a non-fatal case contributes
-  `1 - cfr` either way), so where discharge recording is patchy it is
-  the safer choice.
+  in tail weight (how fast a recent case counts as “probably cured”) and
+  the family is not identifiable from sparse data, so check sensitivity
+  by refitting the other one.
+- **Recovery timing leans on complete discharge data.** In the
+  two-outcome fit, an actually recovered case whose recovery is
+  unrecorded stays censored and gets pushed toward the fatal branch over
+  time, biasing `cfr` *up* — the mirror of the death-undercount bias.
+  The death-only default is insensitive to this (a non-fatal case
+  contributes `1 - cfr` regardless), so prefer it where discharge
+  recording is patchy.
 
 ## Roadmap
 
