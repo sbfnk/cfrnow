@@ -25,8 +25,13 @@ not-yet-known (right-censored).}
 \item{t0}{Optional time origin (\code{Date}). Defaults to
 \code{min(onset) - max_delay}.}
 
-\item{max_delay}{Largest plausible onset-to-death delay (days). Death records
-implying a longer or negative delay are dropped as date-entry errors.}
+\item{max_delay}{Plausibility filter for data-entry errors, in days: a death
+record implying a negative onset-to-death delay, or one longer than
+\code{max_delay}, is dropped as a likely mis-keyed date. This only screens
+records; it does \strong{not} bound or truncate the onset-to-death delay the
+model fits, so set it comfortably above the longest credible delay to
+avoid discarding genuine long-delay deaths (which would bias the delay
+short). It also sets the default origin, \code{t0 = min(onset) - max_delay}.}
 }
 \value{
 A \code{cfrnow_data} list with the Stan inputs (\code{n_death}, \code{death_delay},
@@ -55,6 +60,6 @@ recovery dated before onset. In real time, cases whose onset falls after
 \code{obs_time} are not yet known and are excluded with a message.
 }
 \examples{
-ll <- simulate_linelist(n = 50, delay = dist.spec::LogNormal(2.4, 0.5))
+ll <- simulate_linelist(n = 50, delay = distspec::LogNormal(2.4, 0.5))
 prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
 }

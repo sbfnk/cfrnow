@@ -33,15 +33,20 @@
 #'   not-yet-known (right-censored).
 #' @param t0 Optional time origin (`Date`). Defaults to
 #'   `min(onset) - max_delay`.
-#' @param max_delay Largest plausible onset-to-death delay (days). Death records
-#'   implying a longer or negative delay are dropped as date-entry errors.
+#' @param max_delay Plausibility filter for data-entry errors, in days: a death
+#'   record implying a negative onset-to-death delay, or one longer than
+#'   `max_delay`, is dropped as a likely mis-keyed date. This only screens
+#'   records; it does **not** bound or truncate the onset-to-death delay the
+#'   model fits, so set it comfortably above the longest credible delay to
+#'   avoid discarding genuine long-delay deaths (which would bias the delay
+#'   short). It also sets the default origin, `t0 = min(onset) - max_delay`.
 #'
 #' @return A `cfrnow_data` list with the Stan inputs (`n_death`, `death_delay`,
 #'   `death_width`, `n_recovery`, `recovery_delay`, `recovery_width`, `n_cens`,
 #'   `censor_time`, `censor_width`, `n_resolved`) plus `n_cases`, `n_deaths`,
 #'   `n_recoveries`, `t0` and `obs_time`.
 #' @examples
-#' ll <- simulate_linelist(n = 50, delay = dist.spec::LogNormal(2.4, 0.5))
+#' ll <- simulate_linelist(n = 50, delay = distspec::LogNormal(2.4, 0.5))
 #' prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
 #' @export
 prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
@@ -119,10 +124,12 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
     censor_time <- numeric(0)
     censor_width <- numeric(0)
   } else {
-    # Non-deaths not yet recovered are right-censored.
+    # Non-deaths not yet recovered are right-censored. A death (or recovery)
+    # dated on day `obs_offset` still counts, so the observation horizon is the
+    # end of that day, `obs_offset + 1`; a survivor's follow-up runs to there.
     n_resolved <- 0L
     cens <- is_surv & !recovered
-    censor_time <- pmax(obs_offset - onset_lo_day[cens], 0)
+    censor_time <- pmax(obs_offset + 1 - onset_lo_day[cens], 0)
     censor_width <- width[cens]
   }
 
