@@ -90,11 +90,12 @@ dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
 #' Default initial values that keep the sampler off degenerate delays
 #'
 #' cmdstan's random inits can start a delay at a near-zero mean, where the
-#' survival probability `1 - F(t)` of every censored case is ~0 and the joint log
-#' density is `-Inf` (cmdstan then warns "Error evaluating the log probability at
-#' the initial value"). This starts each *estimated* native parameter at its prior
-#' mean and the CFR at its prior mean, jittered per chain, all on the natural
-#' scale; fixed parameters carry no sampled value and need none.
+#' survival probability `1 - F(t)` of every censored case is ~0 and the joint
+#' log density is `-Inf` (cmdstan then warns "Error evaluating the log
+#' probability at the initial value"). This starts each *estimated* native
+#' parameter at its prior mean and the CFR at its prior mean, jittered per
+#' chain, all on the natural scale; fixed parameters carry no sampled value and
+#' need none.
 #' @param stan_data The assembled Stan data list.
 #' @return A function suitable for cmdstanr's `init` argument.
 #' @noRd
@@ -178,7 +179,8 @@ cfrnow_model <- function(...) {
 #'   two-outcome mixture-cure model that also uses recovery *timing*: a fatal
 #'   case (probability `cfr`) dies at `F_D` and a non-fatal case recovers at
 #'   `F_R`, so a recovered case contributes `(1 - cfr) * f_R(r)` and an
-#'   unresolved case contributes `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`.
+#'   unresolved case contributes
+#'   `cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))`.
 #'   This is a mixture over the two outcomes, not a cause-specific-hazards
 #'   competing-risks model. When `NULL` (default), recovery timing is ignored
 #'   and recovered cases contribute only the cure factor `1 - cfr`. Note this
@@ -202,9 +204,9 @@ cfrnow_model <- function(...) {
 #' @param chains,parallel_chains,iter_warmup,iter_sampling,seed,... Passed to
 #'   `CmdStanModel$sample()`. `seed` defaults to `NULL`, so cmdstanr draws a
 #'   random seed; set it for reproducible fits. Unless you pass your own `init`,
-#'   the sampler starts each estimated delay parameter and the CFR at their prior
-#'   means (jittered per chain), which avoids the degenerate near-zero-delay
-#'   starts that make cmdstan reject the initial log density.
+#'   the sampler starts each estimated delay parameter and the CFR at their
+#'   prior means (jittered per chain), which avoids the degenerate
+#'   near-zero-delay starts that make cmdstan reject the initial log density.
 #' @return A `cfrnow_fit` object wrapping the `CmdStanMCMC` fit, `data`, the
 #'   `delay`/`recovery_delay` specifications and whether recovery was modelled.
 #' @examples

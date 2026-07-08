@@ -41,7 +41,7 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
   }
   onset <- as.Date(onset_start) + sample.int(onset_days, n, replace = TRUE) - 1
   fatal <- stats::runif(n) < cfr
-  # Sub-day onset offset: the true onset falls uniformly within its recorded day.
+  # Sub-day onset offset: true onset is uniform within its recorded day.
   onset_frac <- stats::runif(n)
 
   otd <- sample_delay(n, delay)
@@ -54,7 +54,8 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
   if (!is.null(recovery)) {
     otr <- sample_delay(n, recovery)
     recovery_date <- as.Date(rep(NA, n))
-    recovery_date[!fatal] <- onset[!fatal] + floor(onset_frac[!fatal] + otr[!fatal])
+    recovery_date[!fatal] <-
+      onset[!fatal] + floor(onset_frac[!fatal] + otr[!fatal])
     out$recovery_date <- recovery_date
   }
   out

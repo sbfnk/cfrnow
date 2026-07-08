@@ -35,11 +35,11 @@
 #'   `min(onset) - max_delay`.
 #' @param max_delay Plausibility filter for data-entry errors, in days: a death
 #'   record implying a negative onset-to-death delay, or one longer than
-#'   `max_delay`, is dropped as a likely mis-keyed date. This screens records; it
-#'   does **not** bound or truncate the onset-to-death delay the model fits, so
-#'   set it comfortably above the longest credible delay to avoid discarding
-#'   genuine long-delay deaths (which would bias the delay short). It also sets
-#'   the default time origin, `t0 = min(onset) - max_delay`.
+#'   `max_delay`, is dropped as a likely mis-keyed date. This only screens
+#'   records; it does **not** bound or truncate the onset-to-death delay the
+#'   model fits, so set it comfortably above the longest credible delay to
+#'   avoid discarding genuine long-delay deaths (which would bias the delay
+#'   short). It also sets the default origin, `t0 = min(onset) - max_delay`.
 #'
 #' @return A `cfrnow_data` list with the Stan inputs (`n_death`, `death_delay`,
 #'   `death_width`, `n_recovery`, `recovery_delay`, `recovery_width`, `n_cens`,
