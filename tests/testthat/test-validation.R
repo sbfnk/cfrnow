@@ -4,30 +4,30 @@
 
 test_that("fit_cfr rejects data that did not come from prepare_cfr_data", {
   expect_error(
-    fit_cfr(data.frame(x = 1), delay = distspec::LogNormal(2.4, 0.5),
-            cfr_prior = distspec::Beta(1, 1)),
+    fit_cfr(data.frame(x = 1), delay = LogNormal(2.4, 0.5),
+            cfr_prior = Beta(1, 1)),
     "prepare_cfr_data"
   )
 })
 
 test_that("fit_cfr requires a delay and a cfr_prior", {
   d <- prepare_cfr_data(
-    simulate_linelist(n = 5, delay = distspec::LogNormal(2.4, 0.5)),
+    simulate_linelist(n = 5, delay = LogNormal(2.4, 0.5)),
     obs_time = as.Date("2026-02-01")
   )
-  expect_error(fit_cfr(d, cfr_prior = distspec::Beta(1, 1)), "delay")
-  expect_error(fit_cfr(d, delay = distspec::LogNormal(2.4, 0.5)), "cfr_prior")
+  expect_error(fit_cfr(d, cfr_prior = Beta(1, 1)), "delay")
+  expect_error(fit_cfr(d, delay = LogNormal(2.4, 0.5)), "cfr_prior")
 })
 
 test_that("parse_delay_param handles numbers, Fixed(), Normal() and rejects rest", {
   expect_equal(parse_delay_param(3, "p")$est, 0L)
   expect_equal(parse_delay_param(3, "p")$fixed, 3)
-  expect_equal(parse_delay_param(distspec::Fixed(4), "p")$fixed, 4)
-  expect_equal(parse_delay_param(distspec::Fixed(4), "p")$est, 0L)
-  n <- parse_delay_param(distspec::Normal(2, 0.3), "p")
+  expect_equal(parse_delay_param(Fixed(4), "p")$fixed, 4)
+  expect_equal(parse_delay_param(Fixed(4), "p")$est, 0L)
+  n <- parse_delay_param(Normal(2, 0.3), "p")
   expect_equal(n$est, 1L)
   expect_equal(c(n$prior_mean, n$prior_sd), c(2, 0.3))
-  expect_error(parse_delay_param(distspec::Gamma(3, 1), "p"), "Normal")
+  expect_error(parse_delay_param(Gamma(3, 1), "p"), "Normal")
   expect_error(parse_delay_param(list(), "p"), "unrecognised")
 })
 

@@ -8,11 +8,11 @@ test_that("retrospective fit recovers a known CFR", {
   skip_if_no_cmdstan()
   set.seed(1)
   ll <- simulate_linelist(n = 600, cfr = 0.45,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  delay <- distspec::LogNormal(meanlog = distspec::Normal(2.41, 0.2),
-                                sdlog = distspec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, cfr_prior = distspec::Beta(1, 1),
+  delay <- LogNormal(meanlog = Normal(2.41, 0.2),
+                                sdlog = Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
@@ -25,11 +25,11 @@ test_that("summary carries convergence diagnostics and identifiability flag", {
   skip_if_no_cmdstan()
   set.seed(3)
   ll <- simulate_linelist(n = 500, cfr = 0.5,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  delay <- distspec::LogNormal(meanlog = distspec::Normal(2.41, 0.2),
-                                sdlog = distspec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, cfr_prior = distspec::Beta(1, 1),
+  delay <- LogNormal(meanlog = Normal(2.41, 0.2),
+                                sdlog = Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
@@ -43,10 +43,10 @@ test_that("a fixed delay runs the fixed-F (Ghani/Nishiura) estimator", {
   skip_if_no_cmdstan()
   set.seed(4)
   ll <- simulate_linelist(n = 400, cfr = 0.5,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
-                 cfr_prior = distspec::Beta(1, 1),
+  fit <- fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
@@ -61,13 +61,13 @@ test_that("real-time correction lifts the estimate above the naive ratio", {
   set.seed(2)
   # Growing epidemic sampled mid-outbreak: many recent, not-yet-resolved cases.
   ll <- simulate_linelist(n = 800, cfr = 0.6, onset_days = 40,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   cut <- max(ll$onset_date) - 2          # cut-off soon after the last onsets
   d <- prepare_cfr_data(ll, obs_time = cut)
   naive <- d$n_deaths / d$n_cases
-  delay <- distspec::LogNormal(meanlog = distspec::Normal(2.41, 0.2),
-                                sdlog = distspec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = delay, cfr_prior = distspec::Beta(1, 1),
+  delay <- LogNormal(meanlog = Normal(2.41, 0.2),
+                                sdlog = Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = delay, cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   s <- summary(fit)
@@ -79,17 +79,17 @@ test_that("competing-risks fit uses recovery timing and recovers CFR + F_R", {
   skip_if_no_cmdstan()
   set.seed(5)
   ll <- simulate_linelist(n = 700, cfr = 0.5,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7),
-                          recovery = distspec::Gamma(mean = 21, sd = 9))
+                          delay = Gamma(mean = 12.75, sd = 7),
+                          recovery = Gamma(mean = 21, sd = 9))
   d <- prepare_cfr_data(ll, obs_time = NULL)   # retrospective, all resolved
   expect_gt(d$n_recovery, 0)
   fit <- fit_cfr(
     d,
-    delay = distspec::Gamma(shape = distspec::Normal(3.3, 1),
-                             rate = distspec::Normal(0.26, 0.08)),
-    recovery_delay = distspec::Gamma(shape = distspec::Normal(5, 2),
-                                      rate = distspec::Normal(0.24, 0.08)),
-    cfr_prior = distspec::Beta(1, 1),
+    delay = Gamma(shape = Normal(3.3, 1),
+                             rate = Normal(0.26, 0.08)),
+    recovery_delay = Gamma(shape = Normal(5, 2),
+                                      rate = Normal(0.24, 0.08)),
+    cfr_prior = Beta(1, 1),
     chains = 2, parallel_chains = 2,
     iter_warmup = 500, iter_sampling = 500, refresh = 0
   )
@@ -107,10 +107,10 @@ test_that("print.cfrnow_fit reports the delay, counts and a summary", {
   skip_if_no_cmdstan()
   set.seed(6)
   ll <- simulate_linelist(n = 300, cfr = 0.5,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
-                 cfr_prior = distspec::Beta(1, 1),
+  fit <- fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0)
   expect_message(print(fit), "lognormal delay")
@@ -123,10 +123,10 @@ test_that("a young outbreak is flagged low-information and print warns", {
   set.seed(10)
   # A few very recent cases, almost nothing resolved: cfr stays near its prior.
   ll <- simulate_linelist(n = 25, cfr = 0.5, onset_days = 10,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = min(ll$onset_date) + 3)
-  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
-                 cfr_prior = distspec::Beta(1, 1),
+  fit <- fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
   expect_true(attr(summary(fit), "cfr_low_information"))
@@ -137,10 +137,10 @@ test_that("a retrospective fit matches the naive proportion", {
   skip_if_no_cmdstan()
   set.seed(11)
   ll <- simulate_linelist(n = 600, cfr = 0.4,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = NULL)   # all resolved
-  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
-                 cfr_prior = distspec::Beta(1, 1),
+  fit <- fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
   s <- summary(fit)
@@ -153,11 +153,11 @@ test_that("a real-time fit recovers the true CFR within its interval", {
   skip_if_no_cmdstan()
   set.seed(12)
   ll <- simulate_linelist(n = 800, cfr = 0.6, onset_days = 40,
-                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+                          delay = Gamma(mean = 12.75, sd = 7))
   d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
-  otd <- distspec::LogNormal(meanlog = distspec::Normal(2.41, 0.2),
-                             sdlog = distspec::Normal(0.51, 0.15))
-  fit <- fit_cfr(d, delay = otd, cfr_prior = distspec::Beta(1, 1),
+  otd <- LogNormal(meanlog = Normal(2.41, 0.2),
+                             sdlog = Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1),
                  chains = 2, parallel_chains = 2,
                  iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
   cfr <- summary(fit)[1, ]

@@ -77,15 +77,15 @@ Fit the real-time mixture-cure CFR model
 \examples{
 \dontrun{
 ll <- simulate_linelist(n = 300, cfr = 0.55,
-                        delay = distspec::LogNormal(mean = 12.75, sd = 7),
-                        recovery = distspec::LogNormal(mean = 21, sd = 9))
+                        delay = LogNormal(mean = 12.75, sd = 7),
+                        recovery = LogNormal(mean = 21, sd = 9))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-onset_to_death <- distspec::LogNormal(
-  meanlog = distspec::Normal(2.41, 0.2),
-  sdlog = distspec::Normal(0.51, 0.15)
+onset_to_death <- LogNormal(
+  meanlog = Normal(2.41, 0.2),
+  sdlog = Normal(0.51, 0.15)
 )
 fit <- fit_cfr(d, delay = onset_to_death,
-               cfr_prior = distspec::Beta(6.6, 13.4))
+               cfr_prior = Beta(6.6, 13.4))
 summary(fit)
 }
 }

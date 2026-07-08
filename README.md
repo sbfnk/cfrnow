@@ -41,11 +41,17 @@ are handled by
 
 ``` r
 library(cfrnow)
+#> Loading required package: distspec
+#> 
+#> Attaching package: 'distspec'
+#> The following objects are masked from 'package:stats':
+#> 
+#>     Gamma, sd
 
 # your own onset_date / death_date line list, or a simulated one
 set.seed(1)
 ll <- simulate_linelist(n = 400, cfr = 0.55, onset_days = 45,
-                        delay = distspec::Gamma(mean = 12.75, sd = 7))
+                        delay = Gamma(mean = 12.75, sd = 7))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"))
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 #>    cases   deaths censored 

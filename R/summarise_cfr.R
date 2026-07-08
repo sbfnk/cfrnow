@@ -44,10 +44,10 @@ beta_sd <- function(a, b) {
 #'   `cfr_prior_sd` and `cfr_low_information` attributes.
 #' @examples
 #' \dontrun{
-#' ll <- simulate_linelist(delay = distspec::LogNormal(2.4, 0.5))
+#' ll <- simulate_linelist(delay = LogNormal(2.4, 0.5))
 #' fit <- fit_cfr(prepare_cfr_data(ll),
-#'                delay = distspec::LogNormal(2.4, 0.5),
-#'                cfr_prior = distspec::Beta(1, 1))
+#'                delay = LogNormal(2.4, 0.5),
+#'                cfr_prior = Beta(1, 1))
 #' summary(fit)
 #' }
 #' @export

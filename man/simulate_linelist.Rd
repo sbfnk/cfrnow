@@ -39,7 +39,7 @@ Draws onset dates over a window, marks each case fatal with probability
 a \code{recovery} delay to also simulate onset-to-recovery times for the non-fatal
 cases and add a \code{recovery_date} column. Delays are distspec distributions
 with fixed parameters, matching what \code{\link[=fit_cfr]{fit_cfr()}} takes; you can specify them
-by mean and sd (e.g. \code{distspec::LogNormal(mean = 12.75, sd = 7)}). Returns a
+by mean and sd (e.g. \code{LogNormal(mean = 12.75, sd = 7)}). Returns a
 line list with \code{onset_date}, \code{death_date} (\code{NA} for non-fatal cases) and,
 when \code{recovery} is given, \code{recovery_date} (\code{NA} for fatal cases). The full,
 untruncated outcomes are simulated; pass the result to \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}
@@ -54,5 +54,5 @@ suitable for checking calibration, not only rough recovery.
 }
 \examples{
 simulate_linelist(n = 5, cfr = 0.6,
-                  delay = distspec::LogNormal(mean = 12.75, sd = 7))
+                  delay = LogNormal(mean = 12.75, sd = 7))
 }

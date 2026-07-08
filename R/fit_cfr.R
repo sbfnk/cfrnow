@@ -123,7 +123,7 @@ cfr_stan_init <- function(stan_data) {
 
 #' Read the Beta shape parameters from a CFR prior
 #'
-#' The CFR prior is a `distspec::Beta()` with fixed (numeric) shape parameters;
+#' The CFR prior is a `Beta()` with fixed (numeric) shape parameters;
 #' returns them as the `c(a, b)` the Stan model reads. Rejects anything that is
 #' not a fixed Beta so a mis-specified prior fails loudly rather than silently.
 #' @param cfr_prior A distspec Beta distribution.
@@ -132,7 +132,7 @@ cfr_stan_init <- function(stan_data) {
 parse_cfr_prior <- function(cfr_prior) {
   if (!inherits(cfr_prior, "dist_spec")) {
     stop("`cfr_prior` must be a distspec distribution, ",
-         "e.g. distspec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
+         "e.g. Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
   }
   if (get_distribution(cfr_prior) != "beta") {
     stop("`cfr_prior` must be a Beta() distribution.", call. = FALSE)
@@ -215,15 +215,15 @@ cfrnow_model <- function(...) {
 #' @examples
 #' \dontrun{
 #' ll <- simulate_linelist(n = 300, cfr = 0.55,
-#'                         delay = distspec::LogNormal(mean = 12.75, sd = 7),
-#'                         recovery = distspec::LogNormal(mean = 21, sd = 9))
+#'                         delay = LogNormal(mean = 12.75, sd = 7),
+#'                         recovery = LogNormal(mean = 21, sd = 9))
 #' d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-#' onset_to_death <- distspec::LogNormal(
-#'   meanlog = distspec::Normal(2.41, 0.2),
-#'   sdlog = distspec::Normal(0.51, 0.15)
+#' onset_to_death <- LogNormal(
+#'   meanlog = Normal(2.41, 0.2),
+#'   sdlog = Normal(0.51, 0.15)
 #' )
 #' fit <- fit_cfr(d, delay = onset_to_death,
-#'                cfr_prior = distspec::Beta(6.6, 13.4))
+#'                cfr_prior = Beta(6.6, 13.4))
 #' summary(fit)
 #' }
 #' @export
