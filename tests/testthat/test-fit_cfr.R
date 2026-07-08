@@ -117,3 +117,50 @@ test_that("print.cfrnow_fit reports the delay, counts and a summary", {
   expect_message(print(fit), "naive CFR")
   expect_invisible(suppressMessages(print(fit)))
 })
+
+test_that("a young outbreak is flagged low-information and print warns", {
+  skip_if_no_cmdstan()
+  set.seed(10)
+  # A few very recent cases, almost nothing resolved: cfr stays near its prior.
+  ll <- simulate_linelist(n = 25, cfr = 0.5, onset_days = 10,
+                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+  d <- prepare_cfr_data(ll, obs_time = min(ll$onset_date) + 3)
+  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = distspec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
+                 iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
+  expect_true(attr(summary(fit), "cfr_low_information"))
+  expect_message(print(fit), "weakly identified")
+})
+
+test_that("a retrospective fit matches the naive proportion", {
+  skip_if_no_cmdstan()
+  set.seed(11)
+  ll <- simulate_linelist(n = 600, cfr = 0.4,
+                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+  d <- prepare_cfr_data(ll, obs_time = NULL)   # all resolved
+  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = distspec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
+                 iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
+  s <- summary(fit)
+  naive <- attr(s, "naive_cfr")
+  # with every case resolved the cure model reduces to deaths / cases
+  expect_equal(s[s$quantity == "cfr", "q50"], naive, tolerance = 0.02)
+})
+
+test_that("a real-time fit recovers the true CFR within its interval", {
+  skip_if_no_cmdstan()
+  set.seed(12)
+  ll <- simulate_linelist(n = 800, cfr = 0.6, onset_days = 40,
+                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+  d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
+  otd <- distspec::LogNormal(meanlog = distspec::Normal(2.41, 0.2),
+                             sdlog = distspec::Normal(0.51, 0.15))
+  fit <- fit_cfr(d, delay = otd, cfr_prior = distspec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
+                 iter_warmup = 500, iter_sampling = 500, refresh = 0, seed = 1)
+  cfr <- summary(fit)[1, ]
+  expect_lt(cfr[["q2.5"]], 0.6)      # 95% CrI covers the true CFR
+  expect_gt(cfr[["q97.5"]], 0.6)
+})

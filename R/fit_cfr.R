@@ -101,20 +101,23 @@ dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
 #' @noRd
 cfr_stan_init <- function(stan_data) {
   function(chain_id = 1) {
-    jit <- function(m) as.array(max(m, 0.01) * stats::runif(1, 0.9, 1.1))
+    # An estimated parameter starts at its (jittered) prior mean; one that is
+    # fixed or switched off is a length-0 array, so init it as such -- this
+    # covers every declared parameter and avoids cmdstanr's partial-init warning.
+    par <- function(est, mean) {
+      if (est == 1) as.array(max(mean, 0.01) * stats::runif(1, 0.9, 1.1)) else
+        numeric(0)
+    }
     cfr0 <- stan_data$cfr_a / (stan_data$cfr_a + stan_data$cfr_b)
-    init <- list(
-      cfr = min(max(cfr0 * stats::runif(1, 0.9, 1.1), 1e-3), 1 - 1e-3)
+    list(
+      cfr = min(max(cfr0 * stats::runif(1, 0.9, 1.1), 1e-3), 1 - 1e-3),
+      p1_par = par(stan_data$p1_est, stan_data$p1_prior_mean),
+      p2_par = par(stan_data$p2_est, stan_data$p2_prior_mean),
+      q1_par = par(stan_data$use_recovery * stan_data$q1_est,
+                   stan_data$q1_prior_mean),
+      q2_par = par(stan_data$use_recovery * stan_data$q2_est,
+                   stan_data$q2_prior_mean)
     )
-    if (stan_data$p1_est == 1) init$p1_par <- jit(stan_data$p1_prior_mean)
-    if (stan_data$p2_est == 1) init$p2_par <- jit(stan_data$p2_prior_mean)
-    if (stan_data$use_recovery == 1 && stan_data$q1_est == 1) {
-      init$q1_par <- jit(stan_data$q1_prior_mean)
-    }
-    if (stan_data$use_recovery == 1 && stan_data$q2_est == 1) {
-      init$q2_par <- jit(stan_data$q2_prior_mean)
-    }
-    init
   }
 }
 

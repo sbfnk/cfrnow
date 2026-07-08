@@ -42,28 +42,32 @@ test_that("beta_sd matches the closed-form Beta standard deviation", {
                sqrt(6.6 * 13.4 / (20^2 * 21)))
 })
 
-test_that("cfr_stan_init only initialises the parameters that exist", {
+test_that("cfr_stan_init sets estimated params and leaves the rest length-0", {
   base <- list(cfr_a = 2, cfr_b = 3, p1_prior_mean = 2.4, p2_prior_mean = 0.5,
                q1_prior_mean = 3, q2_prior_mean = 0.2)
+  # every declared parameter is present (so cmdstanr does not warn); estimated
+  # ones are length-1, fixed / switched-off ones are length-0.
+  nms <- c("cfr", "p1_par", "p2_par", "q1_par", "q2_par")
 
   # estimated delay, no recovery
-  sd1 <- c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 0L,
-                      q1_est = 1L, q2_est = 1L))
-  i1 <- cfr_stan_init(sd1)()
-  expect_setequal(names(i1), c("cfr", "p1_par", "p2_par"))
+  i1 <- cfr_stan_init(c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 0L,
+                                   q1_est = 1L, q2_est = 1L)))()
+  expect_setequal(names(i1), nms)
   expect_true(i1$cfr > 0 && i1$cfr < 1)
-  expect_true(i1$p1_par > 0 && i1$p2_par > 0)
+  expect_length(i1$p1_par, 1)
+  expect_length(i1$q1_par, 0)   # recovery off despite q*_est = 1
 
   # fixed delay: only cfr is sampled
-  sd2 <- c(base, list(p1_est = 0L, p2_est = 0L, use_recovery = 0L,
-                      q1_est = 0L, q2_est = 0L))
-  expect_equal(names(cfr_stan_init(sd2)()), "cfr")
+  i2 <- cfr_stan_init(c(base, list(p1_est = 0L, p2_est = 0L, use_recovery = 0L,
+                                   q1_est = 0L, q2_est = 0L)))()
+  expect_length(i2$p1_par, 0)
+  expect_length(i2$p2_par, 0)
 
-  # two-outcome: recovery parameters appear
-  sd3 <- c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 1L,
-                      q1_est = 1L, q2_est = 1L))
-  expect_setequal(names(cfr_stan_init(sd3)()),
-                  c("cfr", "p1_par", "p2_par", "q1_par", "q2_par"))
+  # two-outcome: recovery parameters are set
+  i3 <- cfr_stan_init(c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 1L,
+                                   q1_est = 1L, q2_est = 1L)))()
+  expect_length(i3$q1_par, 1)
+  expect_length(i3$q2_par, 1)
 })
 
 test_that("simulate_linelist requires a delay", {
