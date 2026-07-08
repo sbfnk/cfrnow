@@ -94,7 +94,7 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
 #' @export
 print.cfrnow_fit <- function(x, ...) {
   s <- summary(x)
-  message("<cfrnow_fit> ", distspec::get_distribution(x$delay), " delay")
+  message("<cfrnow_fit> ", get_distribution(x$delay), " delay")
   message("  cases: ", x$data$n_cases,
           "   deaths by cut-off: ", x$data$n_deaths,
           "   naive CFR: ", round(attr(s, "naive_cfr"), 3))

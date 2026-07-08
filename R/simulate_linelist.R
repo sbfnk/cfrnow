@@ -70,8 +70,8 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
 #' @return A numeric vector of `n` delays (days).
 #' @noRd
 sample_delay <- function(n, delay) {
-  fam <- distspec::get_distribution(delay)
-  pars <- distspec::get_parameters(delay)[delay_native_order(fam)]
+  fam <- get_distribution(delay)
+  pars <- get_parameters(delay)[delay_native_order(fam)]
   if (!all(vapply(pars, is.numeric, logical(1)))) {
     stop("simulate_linelist() needs a delay with fixed parameters (numbers), ",
          "not priors.", call. = FALSE)

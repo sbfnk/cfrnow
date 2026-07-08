@@ -29,8 +29,8 @@ parse_delay_param <- function(p, name) {
     return(list(est = 0L, fixed = p, prior_mean = 1, prior_sd = 1))
   }
   if (inherits(p, "dist_spec")) {
-    dname <- distspec::get_distribution(p)
-    pars <- distspec::get_parameters(p)
+    dname <- get_distribution(p)
+    pars <- get_parameters(p)
     if (dname == "fixed") {
       return(list(est = 0L, fixed = pars$value, prior_mean = 1, prior_sd = 1))
     }
@@ -60,9 +60,9 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
     stop("delay must be a distspec distribution, ",
          "e.g. LogNormal() or Gamma().", call. = FALSE)
   }
-  fam <- distspec::get_distribution(delay)
+  fam <- get_distribution(delay)
   native <- delay_native_order(fam)
-  pars <- distspec::get_parameters(delay)
+  pars <- get_parameters(delay)
   if (!all(native %in% names(pars))) {
     stop("delay must be given in native parameters (", native[1], ", ",
          native[2], ") for a ", fam, " distribution.", call. = FALSE)
@@ -85,7 +85,7 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
 #' Its fixed values are never read; the Stan model gates them on `use_recovery`.
 #' @return A distspec LogNormal.
 #' @noRd
-dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
+dummy_delay <- function() LogNormal(meanlog = 1, sdlog = 1)
 
 #' Default initial values that keep the sampler off degenerate delays
 #'
@@ -134,10 +134,10 @@ parse_cfr_prior <- function(cfr_prior) {
     stop("`cfr_prior` must be a distspec distribution, ",
          "e.g. distspec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
   }
-  if (distspec::get_distribution(cfr_prior) != "beta") {
+  if (get_distribution(cfr_prior) != "beta") {
     stop("`cfr_prior` must be a Beta() distribution.", call. = FALSE)
   }
-  pars <- distspec::get_parameters(cfr_prior)
+  pars <- get_parameters(cfr_prior)
   if (!all(vapply(pars[c("shape1", "shape2")], is.numeric, logical(1)))) {
     stop("`cfr_prior` must have fixed (numeric) shape parameters, not priors.",
          call. = FALSE)
