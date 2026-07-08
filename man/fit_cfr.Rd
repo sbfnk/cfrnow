@@ -21,16 +21,16 @@ fit_cfr(
 \arguments{
 \item{data}{A \code{cfrnow_data} list from \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}.}
 
-\item{delay}{Onset-to-death delay as a dist.spec distribution
-(\code{\link[dist.spec:LogNormal]{dist.spec::LogNormal()}} or \code{\link[dist.spec:Gamma]{dist.spec::Gamma()}}); required, with no
+\item{delay}{Onset-to-death delay as a distspec distribution
+(\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}); required, with no
 default. Each native parameter is co-estimated when given as a \code{Normal()}
-prior, or held fixed when given as a number / \code{\link[dist.spec:Fixed]{dist.spec::Fixed()}}; fixing
+prior, or held fixed when given as a number / \code{\link[distspec:Fixed]{distspec::Fixed()}}; fixing
 the whole delay yields the Ghani/Nishiura fixed-delay estimator. For
 example the BDBV/Isiro onset-to-death prior is a \code{LogNormal} with
 \code{meanlog ~ Normal(2.41, 0.2)} and \code{sdlog ~ Normal(0.51, 0.15)}
 (mean ~= 12.75 d).}
 
-\item{recovery_delay}{Optional onset-to-recovery delay (a dist.spec
+\item{recovery_delay}{Optional onset-to-recovery delay (a distspec
 distribution, same conventions as \code{delay}). When supplied, cfrnow fits the
 two-outcome mixture-cure model that also uses recovery \emph{timing}: a fatal
 case (probability \code{cfr}) dies at \code{F_D} and a non-fatal case recovers at
@@ -46,7 +46,7 @@ of incomplete death ascertainment). The death-only default is insensitive
 to this.}
 
 \item{cfr_prior}{Prior on the case fatality ratio, as a
-\code{\link[dist.spec:Beta]{dist.spec::Beta()}} with fixed shape parameters; required, with no default.
+\code{\link[distspec:Beta]{distspec::Beta()}} with fixed shape parameters; required, with no default.
 Because the CFR is only weakly identified early in an outbreak (few deaths
 resolved), this prior can dominate, so choose it deliberately rather than
 reaching for a default. Some reference choices and what they imply (the
@@ -76,15 +76,15 @@ Fit the real-time mixture-cure CFR model
 \examples{
 \dontrun{
 ll <- simulate_linelist(n = 300, cfr = 0.55,
-                        delay = dist.spec::LogNormal(mean = 12.75, sd = 7),
-                        recovery = dist.spec::LogNormal(mean = 21, sd = 9))
+                        delay = distspec::LogNormal(mean = 12.75, sd = 7),
+                        recovery = distspec::LogNormal(mean = 21, sd = 9))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-onset_to_death <- dist.spec::LogNormal(
-  meanlog = dist.spec::Normal(2.41, 0.2),
-  sdlog = dist.spec::Normal(0.51, 0.15)
+onset_to_death <- distspec::LogNormal(
+  meanlog = distspec::Normal(2.41, 0.2),
+  sdlog = distspec::Normal(0.51, 0.15)
 )
 fit <- fit_cfr(d, delay = onset_to_death,
-               cfr_prior = dist.spec::Beta(6.6, 13.4))
+               cfr_prior = distspec::Beta(6.6, 13.4))
 summary(fit)
 }
 }

@@ -3,9 +3,9 @@
 #' Draws onset dates over a window, marks each case fatal with probability
 #' `cfr`, and gives fatal cases an onset-to-death delay drawn from `delay`. Pass
 #' a `recovery` delay to also simulate onset-to-recovery times for the non-fatal
-#' cases and add a `recovery_date` column. Delays are dist.spec distributions
+#' cases and add a `recovery_date` column. Delays are distspec distributions
 #' with fixed parameters, matching what [fit_cfr()] takes; you can specify them
-#' by mean and sd (e.g. `dist.spec::LogNormal(mean = 12.75, sd = 7)`). Returns a
+#' by mean and sd (e.g. `distspec::LogNormal(mean = 12.75, sd = 7)`). Returns a
 #' line list with `onset_date`, `death_date` (`NA` for non-fatal cases) and,
 #' when `recovery` is given, `recovery_date` (`NA` for fatal cases). The full,
 #' untruncated outcomes are simulated; pass the result to [prepare_cfr_data()]
@@ -19,8 +19,8 @@
 #'
 #' @param n Number of cases.
 #' @param cfr True case fatality ratio.
-#' @param delay Onset-to-death delay: a dist.spec distribution
-#'   ([dist.spec::LogNormal()] or [dist.spec::Gamma()]) with fixed parameters.
+#' @param delay Onset-to-death delay: a distspec distribution
+#'   ([distspec::LogNormal()] or [distspec::Gamma()]) with fixed parameters.
 #' @param recovery Optional onset-to-recovery delay (same form as `delay`); when
 #'   given, non-fatal cases get a `recovery_date`.
 #' @param onset_start First possible onset date.
@@ -30,13 +30,13 @@
 #'   given, `recovery_date`.
 #' @examples
 #' simulate_linelist(n = 5, cfr = 0.6,
-#'                   delay = dist.spec::LogNormal(mean = 12.75, sd = 7))
+#'                   delay = distspec::LogNormal(mean = 12.75, sd = 7))
 #' @export
 simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
                               onset_start = as.Date("2026-01-01"),
                               onset_days = 60) {
   if (missing(delay)) {
-    stop("supply a `delay` (a dist.spec distribution with fixed parameters).",
+    stop("supply a `delay` (a distspec distribution with fixed parameters).",
          call. = FALSE)
   }
   onset <- as.Date(onset_start) + sample.int(onset_days, n, replace = TRUE) - 1
@@ -60,17 +60,17 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
   out
 }
 
-#' Draw delays from a dist.spec distribution with fixed parameters
+#' Draw delays from a distspec distribution with fixed parameters
 #'
 #' Used by [simulate_linelist()] for the onset-to-death and onset-to-recovery
 #' delays. Errors if any parameter is a prior rather than a fixed number.
 #' @param n Number of delays to draw.
-#' @param delay A dist.spec delay distribution with fixed parameters.
+#' @param delay A distspec delay distribution with fixed parameters.
 #' @return A numeric vector of `n` delays (days).
 #' @noRd
 sample_delay <- function(n, delay) {
-  fam <- dist.spec::get_distribution(delay)
-  pars <- dist.spec::get_parameters(delay)[delay_native_order(fam)]
+  fam <- distspec::get_distribution(delay)
+  pars <- distspec::get_parameters(delay)[delay_native_order(fam)]
   if (!all(vapply(pars, is.numeric, logical(1)))) {
     stop("simulate_linelist() needs a delay with fixed parameters (numbers), ",
          "not priors.", call. = FALSE)

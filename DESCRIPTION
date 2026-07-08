@@ -18,7 +18,7 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
     cmdstanr,
-    dist.spec,
+    distspec,
     posterior,
     primarycensored,
     stats
@@ -30,7 +30,7 @@ Suggests:
 VignetteBuilder:
     knitr
 Remotes:
-    epiforecasts/dist.spec
+    epiforecasts/distspec
 Additional_repositories:
     https://stan-dev.r-universe.dev
 Config/testthat/edition: 3

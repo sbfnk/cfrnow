@@ -18,7 +18,7 @@ delay_native_order <- function(family) {
 #' Parse one native delay parameter into Stan inputs
 #'
 #' Turns a native parameter (a bare number, `Fixed()`, or a `Normal()` prior)
-#' into the fixed value or prior hyperparameters the Stan model reads. dist.spec
+#' into the fixed value or prior hyperparameters the Stan model reads. distspec
 #' allows only Normal priors on parameters, which is what the model expects.
 #' @param p The parameter: numeric, or a `dist_spec` (`Fixed()` / `Normal()`).
 #' @param name Parameter name, used in error messages.
@@ -29,8 +29,8 @@ parse_delay_param <- function(p, name) {
     return(list(est = 0L, fixed = p, prior_mean = 1, prior_sd = 1))
   }
   if (inherits(p, "dist_spec")) {
-    dname <- dist.spec::get_distribution(p)
-    pars <- dist.spec::get_parameters(p)
+    dname <- distspec::get_distribution(p)
+    pars <- distspec::get_parameters(p)
     if (dname == "fixed") {
       return(list(est = 0L, fixed = pars$value, prior_mean = 1, prior_sd = 1))
     }
@@ -50,19 +50,19 @@ parse_delay_param <- function(p, name) {
 #' The family id (under `dist_id_name`) and the two native parameters under
 #' prefix `pfx` (fixed values and Normal-prior hyperparameters). Used for both
 #' the death (`p`) and recovery (`q`) delays.
-#' @param delay A dist.spec delay distribution.
+#' @param delay A distspec delay distribution.
 #' @param dist_id_name Name of the family-id Stan field.
 #' @param pfx Prefix for the two parameter fields.
 #' @return A named list of Stan data fields.
 #' @noRd
 stan_delay_fields <- function(delay, dist_id_name, pfx) {
   if (!inherits(delay, "dist_spec")) {
-    stop("delay must be a dist.spec distribution, ",
+    stop("delay must be a distspec distribution, ",
          "e.g. LogNormal() or Gamma().", call. = FALSE)
   }
-  fam <- dist.spec::get_distribution(delay)
+  fam <- distspec::get_distribution(delay)
   native <- delay_native_order(fam)
-  pars <- dist.spec::get_parameters(delay)
+  pars <- distspec::get_parameters(delay)
   if (!all(native %in% names(pars))) {
     stop("delay must be given in native parameters (", native[1], ", ",
          native[2], ") for a ", fam, " distribution.", call. = FALSE)
@@ -83,9 +83,9 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
 #' Placeholder recovery delay when recovery is not modelled
 #'
 #' Its fixed values are never read; the Stan model gates them on `use_recovery`.
-#' @return A dist.spec LogNormal.
+#' @return A distspec LogNormal.
 #' @noRd
-dummy_delay <- function() dist.spec::LogNormal(meanlog = 1, sdlog = 1)
+dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
 
 #' Default initial values that keep the sampler off degenerate delays
 #'
@@ -119,21 +119,21 @@ cfr_stan_init <- function(stan_data) {
 
 #' Read the Beta shape parameters from a CFR prior
 #'
-#' The CFR prior is a `dist.spec::Beta()` with fixed (numeric) shape parameters;
+#' The CFR prior is a `distspec::Beta()` with fixed (numeric) shape parameters;
 #' returns them as the `c(a, b)` the Stan model reads. Rejects anything that is
 #' not a fixed Beta so a mis-specified prior fails loudly rather than silently.
-#' @param cfr_prior A dist.spec Beta distribution.
+#' @param cfr_prior A distspec Beta distribution.
 #' @return A named numeric vector `c(a, b)`.
 #' @noRd
 parse_cfr_prior <- function(cfr_prior) {
   if (!inherits(cfr_prior, "dist_spec")) {
-    stop("`cfr_prior` must be a dist.spec distribution, ",
-         "e.g. dist.spec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
+    stop("`cfr_prior` must be a distspec distribution, ",
+         "e.g. distspec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
   }
-  if (dist.spec::get_distribution(cfr_prior) != "beta") {
+  if (distspec::get_distribution(cfr_prior) != "beta") {
     stop("`cfr_prior` must be a Beta() distribution.", call. = FALSE)
   }
-  pars <- dist.spec::get_parameters(cfr_prior)
+  pars <- distspec::get_parameters(cfr_prior)
   if (!all(vapply(pars[c("shape1", "shape2")], is.numeric, logical(1)))) {
     stop("`cfr_prior` must have fixed (numeric) shape parameters, not priors.",
          call. = FALSE)
@@ -165,15 +165,15 @@ cfrnow_model <- function(...) {
 #' Fit the real-time mixture-cure CFR model
 #'
 #' @param data A `cfrnow_data` list from [prepare_cfr_data()].
-#' @param delay Onset-to-death delay as a dist.spec distribution
-#'   ([dist.spec::LogNormal()] or [dist.spec::Gamma()]); required, with no
+#' @param delay Onset-to-death delay as a distspec distribution
+#'   ([distspec::LogNormal()] or [distspec::Gamma()]); required, with no
 #'   default. Each native parameter is co-estimated when given as a `Normal()`
-#'   prior, or held fixed when given as a number / [dist.spec::Fixed()]; fixing
+#'   prior, or held fixed when given as a number / [distspec::Fixed()]; fixing
 #'   the whole delay yields the Ghani/Nishiura fixed-delay estimator. For
 #'   example the BDBV/Isiro onset-to-death prior is a `LogNormal` with
 #'   `meanlog ~ Normal(2.41, 0.2)` and `sdlog ~ Normal(0.51, 0.15)`
 #'   (mean ~= 12.75 d).
-#' @param recovery_delay Optional onset-to-recovery delay (a dist.spec
+#' @param recovery_delay Optional onset-to-recovery delay (a distspec
 #'   distribution, same conventions as `delay`). When supplied, cfrnow fits the
 #'   two-outcome mixture-cure model that also uses recovery *timing*: a fatal
 #'   case (probability `cfr`) dies at `F_D` and a non-fatal case recovers at
@@ -188,7 +188,7 @@ cfrnow_model <- function(...) {
 #'   of incomplete death ascertainment). The death-only default is insensitive
 #'   to this.
 #' @param cfr_prior Prior on the case fatality ratio, as a
-#'   [dist.spec::Beta()] with fixed shape parameters; required, with no default.
+#'   [distspec::Beta()] with fixed shape parameters; required, with no default.
 #'   Because the CFR is only weakly identified early in an outbreak (few deaths
 #'   resolved), this prior can dominate, so choose it deliberately rather than
 #'   reaching for a default. Some reference choices and what they imply (the
@@ -210,15 +210,15 @@ cfrnow_model <- function(...) {
 #' @examples
 #' \dontrun{
 #' ll <- simulate_linelist(n = 300, cfr = 0.55,
-#'                         delay = dist.spec::LogNormal(mean = 12.75, sd = 7),
-#'                         recovery = dist.spec::LogNormal(mean = 21, sd = 9))
+#'                         delay = distspec::LogNormal(mean = 12.75, sd = 7),
+#'                         recovery = distspec::LogNormal(mean = 21, sd = 9))
 #' d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-#' onset_to_death <- dist.spec::LogNormal(
-#'   meanlog = dist.spec::Normal(2.41, 0.2),
-#'   sdlog = dist.spec::Normal(0.51, 0.15)
+#' onset_to_death <- distspec::LogNormal(
+#'   meanlog = distspec::Normal(2.41, 0.2),
+#'   sdlog = distspec::Normal(0.51, 0.15)
 #' )
 #' fit <- fit_cfr(d, delay = onset_to_death,
-#'                cfr_prior = dist.spec::Beta(6.6, 13.4))
+#'                cfr_prior = distspec::Beta(6.6, 13.4))
 #' summary(fit)
 #' }
 #' @export
@@ -231,11 +231,11 @@ fit_cfr <- function(data, delay, recovery_delay = NULL, cfr_prior,
     stop("`data` must come from prepare_cfr_data().", call. = FALSE)
   }
   if (missing(delay)) {
-    stop("supply a `delay` (an onset-to-death dist.spec distribution).",
+    stop("supply a `delay` (an onset-to-death distspec distribution).",
          call. = FALSE)
   }
   if (missing(cfr_prior)) {
-    stop("supply a `cfr_prior` (a dist.spec Beta() on the CFR); ",
+    stop("supply a `cfr_prior` (a distspec Beta() on the CFR); ",
          "there is no default. See ?fit_cfr for reference choices.",
          call. = FALSE)
   }

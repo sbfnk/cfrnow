@@ -45,7 +45,7 @@ library(cfrnow)
 # your own onset_date / death_date line list, or a simulated one
 set.seed(1)
 ll <- simulate_linelist(n = 400, cfr = 0.55, onset_days = 45,
-                        delay = dist.spec::Gamma(mean = 12.75, sd = 7))
+                        delay = distspec::Gamma(mean = 12.75, sd = 7))
 d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"))
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 #>    cases   deaths censored 
@@ -53,7 +53,7 @@ c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 ```
 
 Supply the onset-to-death `delay` and a `cfr_prior` as
-[dist.spec](https://epiforecasts.io/dist.spec/) distributions — neither
+[distspec](https://epiforecasts.io/distspec/) distributions — neither
 has a default. In the delay, a native parameter can be a `Normal()`
 prior (co-estimated) or a fixed number (held fixed; fixing the whole
 delay gives the Ghani/Nishiura estimator). The `cfr_prior` is a `Beta()`
@@ -63,7 +63,7 @@ is uniform, `Beta(1, 9)` favours a low CFR, and `Beta(6.6, 13.4)` (mean
 onset-to-death prior:
 
 ``` r
-library(dist.spec)
+library(distspec)
 onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
 fit <- fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(1, 1))
 summary(fit)
@@ -143,7 +143,7 @@ stratification (age, sex, vaccination); and posterior-predictive checks.
 - [cmdstanr](https://mc-stan.org/cmdstanr/) and a working CmdStan
   install
 - [primarycensored](https://primarycensored.epinowcast.org/)
-- [dist.spec](https://epiforecasts.io/dist.spec/)
+- [distspec](https://epiforecasts.io/distspec/)
 
 The primarycensored Stan functions are vendored into
 `inst/stan/include/pcd_functions.stan`; regenerate with
