@@ -46,7 +46,7 @@
 #'   `censor_time`, `censor_width`, `n_resolved`) plus `n_cases`, `n_deaths`,
 #'   `n_recoveries`, `t0` and `obs_time`.
 #' @examples
-#' ll <- simulate_linelist(n = 50, delay = distspec::LogNormal(2.4, 0.5))
+#' ll <- simulate_linelist(n = 50, delay = LogNormal(2.4, 0.5))
 #' prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
 #' @export
 prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,

@@ -5,7 +5,7 @@
 #' a `recovery` delay to also simulate onset-to-recovery times for the non-fatal
 #' cases and add a `recovery_date` column. Delays are distspec distributions
 #' with fixed parameters, matching what [fit_cfr()] takes; you can specify them
-#' by mean and sd (e.g. `distspec::LogNormal(mean = 12.75, sd = 7)`). Returns a
+#' by mean and sd (e.g. `LogNormal(mean = 12.75, sd = 7)`). Returns a
 #' line list with `onset_date`, `death_date` (`NA` for non-fatal cases) and,
 #' when `recovery` is given, `recovery_date` (`NA` for fatal cases). The full,
 #' untruncated outcomes are simulated; pass the result to [prepare_cfr_data()]
@@ -30,7 +30,7 @@
 #'   given, `recovery_date`.
 #' @examples
 #' simulate_linelist(n = 5, cfr = 0.6,
-#'                   delay = distspec::LogNormal(mean = 12.75, sd = 7))
+#'                   delay = LogNormal(mean = 12.75, sd = 7))
 #' @export
 simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
                               onset_start = as.Date("2026-01-01"),
@@ -70,8 +70,8 @@ simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
 #' @return A numeric vector of `n` delays (days).
 #' @noRd
 sample_delay <- function(n, delay) {
-  fam <- distspec::get_distribution(delay)
-  pars <- distspec::get_parameters(delay)[delay_native_order(fam)]
+  fam <- get_distribution(delay)
+  pars <- get_parameters(delay)[delay_native_order(fam)]
   if (!all(vapply(pars, is.numeric, logical(1)))) {
     stop("simulate_linelist() needs a delay with fixed parameters (numbers), ",
          "not priors.", call. = FALSE)

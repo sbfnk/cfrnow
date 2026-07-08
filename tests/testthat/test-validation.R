@@ -4,30 +4,30 @@
 
 test_that("fit_cfr rejects data that did not come from prepare_cfr_data", {
   expect_error(
-    fit_cfr(data.frame(x = 1), delay = distspec::LogNormal(2.4, 0.5),
-            cfr_prior = distspec::Beta(1, 1)),
+    fit_cfr(data.frame(x = 1), delay = LogNormal(2.4, 0.5),
+            cfr_prior = Beta(1, 1)),
     "prepare_cfr_data"
   )
 })
 
 test_that("fit_cfr requires a delay and a cfr_prior", {
   d <- prepare_cfr_data(
-    simulate_linelist(n = 5, delay = distspec::LogNormal(2.4, 0.5)),
+    simulate_linelist(n = 5, delay = LogNormal(2.4, 0.5)),
     obs_time = as.Date("2026-02-01")
   )
-  expect_error(fit_cfr(d, cfr_prior = distspec::Beta(1, 1)), "delay")
-  expect_error(fit_cfr(d, delay = distspec::LogNormal(2.4, 0.5)), "cfr_prior")
+  expect_error(fit_cfr(d, cfr_prior = Beta(1, 1)), "delay")
+  expect_error(fit_cfr(d, delay = LogNormal(2.4, 0.5)), "cfr_prior")
 })
 
 test_that("parse_delay_param handles numbers, Fixed(), Normal() and rejects rest", {
   expect_equal(parse_delay_param(3, "p")$est, 0L)
   expect_equal(parse_delay_param(3, "p")$fixed, 3)
-  expect_equal(parse_delay_param(distspec::Fixed(4), "p")$fixed, 4)
-  expect_equal(parse_delay_param(distspec::Fixed(4), "p")$est, 0L)
-  n <- parse_delay_param(distspec::Normal(2, 0.3), "p")
+  expect_equal(parse_delay_param(Fixed(4), "p")$fixed, 4)
+  expect_equal(parse_delay_param(Fixed(4), "p")$est, 0L)
+  n <- parse_delay_param(Normal(2, 0.3), "p")
   expect_equal(n$est, 1L)
   expect_equal(c(n$prior_mean, n$prior_sd), c(2, 0.3))
-  expect_error(parse_delay_param(distspec::Gamma(3, 1), "p"), "Normal")
+  expect_error(parse_delay_param(Gamma(3, 1), "p"), "Normal")
   expect_error(parse_delay_param(list(), "p"), "unrecognised")
 })
 
@@ -42,28 +42,32 @@ test_that("beta_sd matches the closed-form Beta standard deviation", {
                sqrt(6.6 * 13.4 / (20^2 * 21)))
 })
 
-test_that("cfr_stan_init only initialises the parameters that exist", {
+test_that("cfr_stan_init sets estimated params and leaves the rest length-0", {
   base <- list(cfr_a = 2, cfr_b = 3, p1_prior_mean = 2.4, p2_prior_mean = 0.5,
                q1_prior_mean = 3, q2_prior_mean = 0.2)
+  # every declared parameter is present (so cmdstanr does not warn); estimated
+  # ones are length-1, fixed / switched-off ones are length-0.
+  nms <- c("cfr", "p1_par", "p2_par", "q1_par", "q2_par")
 
   # estimated delay, no recovery
-  sd1 <- c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 0L,
-                      q1_est = 1L, q2_est = 1L))
-  i1 <- cfr_stan_init(sd1)()
-  expect_setequal(names(i1), c("cfr", "p1_par", "p2_par"))
+  i1 <- cfr_stan_init(c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 0L,
+                                   q1_est = 1L, q2_est = 1L)))()
+  expect_setequal(names(i1), nms)
   expect_true(i1$cfr > 0 && i1$cfr < 1)
-  expect_true(i1$p1_par > 0 && i1$p2_par > 0)
+  expect_length(i1$p1_par, 1)
+  expect_length(i1$q1_par, 0)   # recovery off despite q*_est = 1
 
   # fixed delay: only cfr is sampled
-  sd2 <- c(base, list(p1_est = 0L, p2_est = 0L, use_recovery = 0L,
-                      q1_est = 0L, q2_est = 0L))
-  expect_equal(names(cfr_stan_init(sd2)()), "cfr")
+  i2 <- cfr_stan_init(c(base, list(p1_est = 0L, p2_est = 0L, use_recovery = 0L,
+                                   q1_est = 0L, q2_est = 0L)))()
+  expect_length(i2$p1_par, 0)
+  expect_length(i2$p2_par, 0)
 
-  # two-outcome: recovery parameters appear
-  sd3 <- c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 1L,
-                      q1_est = 1L, q2_est = 1L))
-  expect_setequal(names(cfr_stan_init(sd3)()),
-                  c("cfr", "p1_par", "p2_par", "q1_par", "q2_par"))
+  # two-outcome: recovery parameters are set
+  i3 <- cfr_stan_init(c(base, list(p1_est = 1L, p2_est = 1L, use_recovery = 1L,
+                                   q1_est = 1L, q2_est = 1L)))()
+  expect_length(i3$q1_par, 1)
+  expect_length(i3$q2_par, 1)
 })
 
 test_that("simulate_linelist requires a delay", {

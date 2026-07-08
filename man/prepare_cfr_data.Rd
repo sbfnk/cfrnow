@@ -60,6 +60,6 @@ recovery dated before onset. In real time, cases whose onset falls after
 \code{obs_time} are not yet known and are excluded with a message.
 }
 \examples{
-ll <- simulate_linelist(n = 50, delay = distspec::LogNormal(2.4, 0.5))
+ll <- simulate_linelist(n = 50, delay = LogNormal(2.4, 0.5))
 prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
 }

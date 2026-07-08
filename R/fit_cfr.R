@@ -29,8 +29,8 @@ parse_delay_param <- function(p, name) {
     return(list(est = 0L, fixed = p, prior_mean = 1, prior_sd = 1))
   }
   if (inherits(p, "dist_spec")) {
-    dname <- distspec::get_distribution(p)
-    pars <- distspec::get_parameters(p)
+    dname <- get_distribution(p)
+    pars <- get_parameters(p)
     if (dname == "fixed") {
       return(list(est = 0L, fixed = pars$value, prior_mean = 1, prior_sd = 1))
     }
@@ -60,9 +60,9 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
     stop("delay must be a distspec distribution, ",
          "e.g. LogNormal() or Gamma().", call. = FALSE)
   }
-  fam <- distspec::get_distribution(delay)
+  fam <- get_distribution(delay)
   native <- delay_native_order(fam)
-  pars <- distspec::get_parameters(delay)
+  pars <- get_parameters(delay)
   if (!all(native %in% names(pars))) {
     stop("delay must be given in native parameters (", native[1], ", ",
          native[2], ") for a ", fam, " distribution.", call. = FALSE)
@@ -85,7 +85,7 @@ stan_delay_fields <- function(delay, dist_id_name, pfx) {
 #' Its fixed values are never read; the Stan model gates them on `use_recovery`.
 #' @return A distspec LogNormal.
 #' @noRd
-dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
+dummy_delay <- function() LogNormal(meanlog = 1, sdlog = 1)
 
 #' Default initial values that keep the sampler off degenerate delays
 #'
@@ -101,26 +101,29 @@ dummy_delay <- function() distspec::LogNormal(meanlog = 1, sdlog = 1)
 #' @noRd
 cfr_stan_init <- function(stan_data) {
   function(chain_id = 1) {
-    jit <- function(m) as.array(max(m, 0.01) * stats::runif(1, 0.9, 1.1))
+    # An estimated parameter starts at its (jittered) prior mean; one that is
+    # fixed or switched off is a length-0 array, so init it as such. Covering
+    # every declared parameter avoids cmdstanr's partial-init warning.
+    init_par <- function(est, mean) {
+      if (est == 1) as.array(max(mean, 0.01) * stats::runif(1, 0.9, 1.1)) else
+        numeric(0)
+    }
     cfr0 <- stan_data$cfr_a / (stan_data$cfr_a + stan_data$cfr_b)
-    init <- list(
-      cfr = min(max(cfr0 * stats::runif(1, 0.9, 1.1), 1e-3), 1 - 1e-3)
+    list(
+      cfr = min(max(cfr0 * stats::runif(1, 0.9, 1.1), 1e-3), 1 - 1e-3),
+      p1_par = init_par(stan_data$p1_est, stan_data$p1_prior_mean),
+      p2_par = init_par(stan_data$p2_est, stan_data$p2_prior_mean),
+      q1_par = init_par(stan_data$use_recovery * stan_data$q1_est,
+                        stan_data$q1_prior_mean),
+      q2_par = init_par(stan_data$use_recovery * stan_data$q2_est,
+                        stan_data$q2_prior_mean)
     )
-    if (stan_data$p1_est == 1) init$p1_par <- jit(stan_data$p1_prior_mean)
-    if (stan_data$p2_est == 1) init$p2_par <- jit(stan_data$p2_prior_mean)
-    if (stan_data$use_recovery == 1 && stan_data$q1_est == 1) {
-      init$q1_par <- jit(stan_data$q1_prior_mean)
-    }
-    if (stan_data$use_recovery == 1 && stan_data$q2_est == 1) {
-      init$q2_par <- jit(stan_data$q2_prior_mean)
-    }
-    init
   }
 }
 
 #' Read the Beta shape parameters from a CFR prior
 #'
-#' The CFR prior is a `distspec::Beta()` with fixed (numeric) shape parameters;
+#' The CFR prior is a `Beta()` with fixed (numeric) shape parameters;
 #' returns them as the `c(a, b)` the Stan model reads. Rejects anything that is
 #' not a fixed Beta so a mis-specified prior fails loudly rather than silently.
 #' @param cfr_prior A distspec Beta distribution.
@@ -129,12 +132,12 @@ cfr_stan_init <- function(stan_data) {
 parse_cfr_prior <- function(cfr_prior) {
   if (!inherits(cfr_prior, "dist_spec")) {
     stop("`cfr_prior` must be a distspec distribution, ",
-         "e.g. distspec::Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
+         "e.g. Beta(shape1 = 1, shape2 = 1).", call. = FALSE)
   }
-  if (distspec::get_distribution(cfr_prior) != "beta") {
+  if (get_distribution(cfr_prior) != "beta") {
     stop("`cfr_prior` must be a Beta() distribution.", call. = FALSE)
   }
-  pars <- distspec::get_parameters(cfr_prior)
+  pars <- get_parameters(cfr_prior)
   if (!all(vapply(pars[c("shape1", "shape2")], is.numeric, logical(1)))) {
     stop("`cfr_prior` must have fixed (numeric) shape parameters, not priors.",
          call. = FALSE)
@@ -212,15 +215,15 @@ cfrnow_model <- function(...) {
 #' @examples
 #' \dontrun{
 #' ll <- simulate_linelist(n = 300, cfr = 0.55,
-#'                         delay = distspec::LogNormal(mean = 12.75, sd = 7),
-#'                         recovery = distspec::LogNormal(mean = 21, sd = 9))
+#'                         delay = LogNormal(mean = 12.75, sd = 7),
+#'                         recovery = LogNormal(mean = 21, sd = 9))
 #' d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-#' onset_to_death <- distspec::LogNormal(
-#'   meanlog = distspec::Normal(2.41, 0.2),
-#'   sdlog = distspec::Normal(0.51, 0.15)
+#' onset_to_death <- LogNormal(
+#'   meanlog = Normal(2.41, 0.2),
+#'   sdlog = Normal(0.51, 0.15)
 #' )
 #' fit <- fit_cfr(d, delay = onset_to_death,
-#'                cfr_prior = distspec::Beta(6.6, 13.4))
+#'                cfr_prior = Beta(6.6, 13.4))
 #' summary(fit)
 #' }
 #' @export

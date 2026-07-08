@@ -56,7 +56,7 @@ known CFR of 0.55 sampled part-way through a growing epidemic.
 ```{r simulate}
 set.seed(1)
 ll <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
-                        delay = distspec::LogNormal(mean = 12.75, sd = 7))
+                        delay = LogNormal(mean = 12.75, sd = 7))
 head(ll)
 ```
 
@@ -83,7 +83,7 @@ co-estimate it, or a fixed number / `Fixed()` to hold it fixed (fixing the whole
 delay gives the Ghani/Nishiura estimator). Here we use the BDBV/Isiro
 onset-to-death prior.
 
-You also supply a prior on the CFR as a `distspec::Beta()`, again with no
+You also supply a prior on the CFR as a `Beta()`, again with no
 default. Early in an outbreak few deaths have resolved and the CFR is weakly
 identified, so this prior can dominate — choose it deliberately. `Beta(1, 1)` is
 uniform on \[0, 1]; `Beta(1, 9)` has mean 0.1 and favours a low CFR; and
@@ -94,12 +94,12 @@ This step needs a working CmdStan install and is not run when the vignette is
 built.
 
 ```{r fit, eval = FALSE}
-onset_to_death <- distspec::LogNormal(
-  meanlog = distspec::Normal(2.41, 0.2),
-  sdlog = distspec::Normal(0.51, 0.15)
+onset_to_death <- LogNormal(
+  meanlog = Normal(2.41, 0.2),
+  sdlog = Normal(0.51, 0.15)
 )
 fit <- fit_cfr(d, delay = onset_to_death,
-               cfr_prior = distspec::Beta(6.6, 13.4))
+               cfr_prior = Beta(6.6, 13.4))
 summary(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.579  0.528  0.579  0.625 1.001     3200
@@ -165,11 +165,11 @@ parameter as the prior width (or fix it at the posterior mean for the
 Ghani/Nishiura fit):
 
 ```{r use-estimate, eval = FALSE}
-delay <- distspec::LogNormal(
-  meanlog = distspec::Normal(mean(pred$mu), sd(pred$mu)),
-  sdlog = distspec::Normal(mean(pred$sigma), sd(pred$sigma))
+delay <- LogNormal(
+  meanlog = Normal(mean(pred$mu), sd(pred$mu)),
+  sdlog = Normal(mean(pred$sigma), sd(pred$sigma))
 )
-fit_cfr(d, delay = delay, cfr_prior = distspec::Beta(6.6, 13.4))
+fit_cfr(d, delay = delay, cfr_prior = Beta(6.6, 13.4))
 ```
 
 For a real-time estimate, set `obs_time` to the cut-off so epidist corrects for
@@ -188,8 +188,8 @@ recoveries that resolve more slowly than deaths (mean 21 vs 12.75 days):
 ```{r recovery}
 set.seed(2)
 llr <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
-                         delay = distspec::Gamma(mean = 12.75, sd = 7),
-                         recovery = distspec::Gamma(mean = 21, sd = 9))
+                         delay = Gamma(mean = 12.75, sd = 7),
+                         recovery = Gamma(mean = 21, sd = 9))
 dr <- prepare_cfr_data(llr, obs_time = max(llr$onset_date) - 3)
 c(deaths = dr$n_death, recoveries = dr$n_recovery, censored = dr$n_cens)
 ```
@@ -203,12 +203,12 @@ mixture-cure model, which uses *when* each case recovered: a fatal case dies at
 not a cause-specific-hazards competing-risks model):
 
 ```{r recovery-fit, eval = FALSE}
-onset_to_recovery <- distspec::LogNormal(
-  meanlog = distspec::Normal(2.9, 0.3),
-  sdlog = distspec::Normal(0.5, 0.2)
+onset_to_recovery <- LogNormal(
+  meanlog = Normal(2.9, 0.3),
+  sdlog = Normal(0.5, 0.2)
 )
 fit <- fit_cfr(dr, delay = onset_to_death, recovery_delay = onset_to_recovery,
-               cfr_prior = distspec::Beta(6.6, 13.4))
+               cfr_prior = Beta(6.6, 13.4))
 summary(fit)   # also reports recovery_mean / recovery_sd
 ```
 
@@ -271,19 +271,19 @@ everything has resolved:
 set.seed(42)
 ll <- simulate_linelist(
   n = 1500, cfr = 0.5, onset_days = 40,
-  delay    = distspec::Gamma(mean = 12.75, sd = 7),
-  recovery = distspec::Gamma(mean = 21, sd = 9)
+  delay    = Gamma(mean = 12.75, sd = 7),
+  recovery = Gamma(mean = 21, sd = 9)
 )
-otd <- distspec::Gamma(shape = distspec::Normal(3.3, 0.5),
-                        rate  = distspec::Normal(0.26, 0.05))
-otr <- distspec::Gamma(shape = distspec::Normal(5.4, 0.8),
-                        rate  = distspec::Normal(0.26, 0.05))
+otd <- Gamma(shape = Normal(3.3, 0.5),
+                        rate  = Normal(0.26, 0.05))
+otr <- Gamma(shape = Normal(5.4, 0.8),
+                        rate  = Normal(0.26, 0.05))
 
 for (cut in c("2026-01-25", "2026-02-15", "2026-05-01")) {
   cr  <- cr_cfr(ll, cut)
   fit <- fit_cfr(prepare_cfr_data(ll, obs_time = cut),
                  delay = otd, recovery_delay = otr,
-                 cfr_prior = distspec::Beta(1, 1))
+                 cfr_prior = Beta(1, 1))
   cfr <- summary(fit)[1, c("q2.5", "q50", "q97.5")]
   cat(sprintf("%s  naive %.2f  AJ %.2f  FG %.2f  cfrnow %.2f (%.2f-%.2f)\n",
               cut, cr[["naive"]], cr[["aalen_johansen"]], cr[["fine_gray"]],
@@ -332,4 +332,4 @@ The correction fixes a *timing* bias; it cannot repair the data.
 - **Stationary delay and homogeneous CFR.** A pooled CFR lags reality as
   treatment access scales up; time-varying CFR is future work.
 - **Delay family is chosen, not estimated.** Refit with a
-  `distspec::Gamma()` delay to check sensitivity to the tail.
+  `Gamma()` delay to check sensitivity to the tail.
