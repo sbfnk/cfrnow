@@ -1,6 +1,7 @@
 # For help debugging build failures open an issue on posit community with the
 # 'github-actions' tag. https://forum.posit.co/
 on:
+  merge_group:
   push:
     branches: [main]
   pull_request:
