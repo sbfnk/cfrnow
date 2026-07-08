@@ -102,3 +102,18 @@ test_that("competing-risks fit uses recovery timing and recovers CFR + F_R", {
   expect_gt(rmean[["q97.5"]], 21)
   expect_lt(rmean[["q2.5"]], 21)
 })
+
+test_that("print.cfrnow_fit reports the delay, counts and a summary", {
+  skip_if_no_cmdstan()
+  set.seed(6)
+  ll <- simulate_linelist(n = 300, cfr = 0.5,
+                          delay = distspec::Gamma(mean = 12.75, sd = 7))
+  d <- prepare_cfr_data(ll, obs_time = NULL)
+  fit <- fit_cfr(d, delay = distspec::LogNormal(meanlog = 2.41, sdlog = 0.51),
+                 cfr_prior = distspec::Beta(1, 1),
+                 chains = 2, parallel_chains = 2,
+                 iter_warmup = 500, iter_sampling = 500, refresh = 0)
+  expect_message(print(fit), "lognormal delay")
+  expect_message(print(fit), "naive CFR")
+  expect_invisible(suppressMessages(print(fit)))
+})
