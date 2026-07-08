@@ -114,9 +114,9 @@ cfr_stan_init <- function(stan_data) {
       p1_par = init_par(stan_data$p1_est, stan_data$p1_prior_mean),
       p2_par = init_par(stan_data$p2_est, stan_data$p2_prior_mean),
       q1_par = init_par(stan_data$use_recovery * stan_data$q1_est,
-                     stan_data$q1_prior_mean),
+                        stan_data$q1_prior_mean),
       q2_par = init_par(stan_data$use_recovery * stan_data$q2_est,
-                     stan_data$q2_prior_mean)
+                        stan_data$q2_prior_mean)
     )
   }
 }
