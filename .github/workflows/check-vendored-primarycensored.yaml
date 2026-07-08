@@ -1,0 +1,54 @@
+# Check that the vendored primarycensored Stan functions
+# (inst/stan/include/pcd_functions.stan) are up to date with the latest
+# primarycensored. Regenerates them via data-raw/vendor_stan.R and opens a PR
+# if they have drifted.
+name: check-vendored-primarycensored
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-vendored-primarycensored:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # Only primarycensored is needed to run the vendoring script, so install
+      # it directly rather than the package's (CmdStan-heavy) dependencies.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          install-pandoc: false
+          packages: any::primarycensored
+
+      - name: Regenerate the vendored Stan functions
+        run: Rscript data-raw/vendor_stan.R
+
+      - name: Open a PR if the vendored functions changed
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "Update vendored primarycensored Stan functions"
+          title: "Update vendored primarycensored Stan functions"
+          body: |
+            The vendored primarycensored Stan functions in
+            `inst/stan/include/pcd_functions.stan` are out of date with the
+            latest primarycensored. This PR regenerates them via
+            `data-raw/vendor_stan.R`.
+
+            CmdStan is not exercised here, so please re-run the tests and
+            verify the changes before merging.
+          branch: update-vendored-primarycensored
+          labels: dependencies
+          add-paths: inst/stan/include/pcd_functions.stan
+          token: ${{ secrets.GITHUB_TOKEN }}
