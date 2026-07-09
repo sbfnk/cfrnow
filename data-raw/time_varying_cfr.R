@@ -47,10 +47,10 @@ cure$week <- as.numeric(cure$onset - min(cure$onset)) %/% 7
 # demonstration from the delay's uncertainty.
 onset_to_death <- LogNormal(meanlog = 2.41, sdlog = 0.51)
 
-# A fixed-df natural spline on the week enters the CFR as ordinary basis columns
-# with Normal priors, so there is no penalised-smooth variance hyperparameter and
-# hence no funnel: the model samples cleanly at the default adapt_delta while
-# still fitting a flexible curve.
+# A fixed-df natural spline on the week enters the CFR as ordinary basis
+# columns with Normal priors, so there is no penalised-smooth variance
+# hyperparameter and hence no funnel: the model samples cleanly at the default
+# adapt_delta while still fitting a flexible curve.
 fit <- fit_cfr(
   cure,
   delay = onset_to_death,
@@ -63,7 +63,8 @@ fit <- fit_cfr(
 # --- Recover cfr(week) on the cfr dpar (logit link) -----------------------
 # Predict on the fitted rows rather than a fresh grid: every case in a week
 # shares the same `week`, so its cfr prediction is identical, and reusing the
-# training design matrix sidesteps recomputing the spline basis from a new range.
+# training design matrix sidesteps recomputing the spline basis from a new
+# range.
 weeks <- sort(unique(cure$week))
 cfr_all <- brms::posterior_epred(fit, dpar = "cfr")   # ndraws x n_cases
 cfr_draws <- cfr_all[, match(weeks, cure$week), drop = FALSE]
@@ -77,5 +78,5 @@ cfr_week <- data.frame(
   upper = apply(cfr_draws, 2, stats::quantile, probs = 0.95)
 )
 
-saveRDS(cfr_week, "inst/vignette-data/time_varying_cfr.rds")
+saveRDS(cfr_week, file.path("inst", "vignette-data", "time_varying_cfr.rds"))
 print(cfr_week, row.names = FALSE)
