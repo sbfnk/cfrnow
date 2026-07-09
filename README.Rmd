@@ -80,8 +80,11 @@ fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))   # ga
 fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                 # fixed-F
 fit_cfr(d, delay = onset_to_death,
         recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))     # two-outcome
-fit_cfr(d, delay = onset_to_death,
-        formula = brms::bf(mu ~ 1, cfr ~ age_group))                        # CFR by covariate
+
+# covariate / time-varying CFR: carry the column through the prep, then
+# reference it in the formula (the onset date rides along as `onset`).
+dc <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"), covariates = "age_group")
+fit_cfr(dc, delay = onset_to_death, formula = brms::bf(mu ~ 1, cfr ~ age_group))
 ```
 
 Pass `obs_time = NULL` to `prepare_cfr_data()` for a retrospective fit (it reduces

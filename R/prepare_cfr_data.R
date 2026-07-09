@@ -31,6 +31,10 @@
 #'   before `obs_time` is resolved; one still alive and unresolved is
 #'   right-censored; and a death dated after `obs_time` is treated as
 #'   not-yet-known (right-censored).
+#' @param covariates Character vector of `linelist` column names to carry
+#'   through to the per-case model rows, so they can be used in a `cfr ~ ...`
+#'   formula. The onset date is always carried as `onset`; for a time-varying
+#'   CFR derive a time term from it (e.g. `week`) and pass `cfr ~ s(week)`.
 #' @param t0 Optional time origin (`Date`). Defaults to
 #'   `min(onset) - max_delay`.
 #' @param max_delay Plausibility filter for data-entry errors, in days: a death
@@ -41,15 +45,19 @@
 #'   avoid discarding genuine long-delay deaths (which would bias the delay
 #'   short). It also sets the default origin, `t0 = min(onset) - max_delay`.
 #'
-#' @return A `cfrnow_data` list with the Stan inputs (`n_death`, `death_delay`,
-#'   `death_width`, `n_recovery`, `recovery_delay`, `recovery_width`, `n_cens`,
-#'   `censor_time`, `censor_width`, `n_resolved`) plus `n_cases`, `n_deaths`,
-#'   `n_recoveries`, `t0` and `obs_time`.
+#' @return A `cfrnow_data` list with the aggregated model inputs (`n_death`,
+#'   `death_delay`, `death_width`, `n_recovery`, `recovery_delay`,
+#'   `recovery_width`, `n_cens`, `censor_time`, `censor_width`, `n_resolved`,
+#'   `n_cases`, `n_deaths`, `n_recoveries`, `t0`, `obs_time`) and a `cases`
+#'   data frame with one row per kept case (`y`, `outcome`, `pwindow`,
+#'   `swindow`, `onset` and any requested `covariates`), which
+#'   [as_epidist_cure_model()] turns into the model frame.
 #' @examples
 #' ll <- simulate_linelist(n = 50, delay = LogNormal(2.4, 0.5))
 #' prepare_cfr_data(ll, obs_time = as.Date("2026-02-01"))
 #' @export
-prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
+prepare_cfr_data <- function(linelist, obs_time = NULL,
+                             covariates = character(), t0 = NULL,
                              max_delay = 60) {
   if (!"onset_date" %in% names(linelist)) {
     stop("`linelist` needs an `onset_date` column.", call. = FALSE)
@@ -133,6 +141,32 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
     censor_width <- width[cens]
   }
 
+  # One model row per kept case, carrying the onset date and any requested
+  # covariate columns so covariate and time-varying CFR formulas can use them.
+  # y is the delay for deaths/recoveries, 0 for resolved non-deaths, and the
+  # follow-up time for censored survivors; the likelihood treats each row
+  # independently, so row order does not matter.
+  n <- nrow(linelist)
+  y_case <- integer(n)
+  outcome_case <- integer(n)
+  outcome_case[is_death] <- .CURE_DEATH
+  y_case[is_death] <- as.integer(round(delay[is_death]))
+  outcome_case[recovered] <- .CURE_RECOVERY
+  y_case[recovered] <-
+    as.integer(round((recovery_day - onset_lo_day)[recovered]))
+  surv_untimed <- is_surv & !recovered
+  if (retrospective) {
+    outcome_case[surv_untimed] <- .CURE_RESOLVED
+  } else {
+    outcome_case[surv_untimed] <- .CURE_CENSORED
+    y_case[surv_untimed] <-
+      as.integer(pmax(obs_offset + 1 - onset_lo_day[surv_untimed], 0))
+  }
+  cases <- data.frame(y = y_case[keep], outcome = outcome_case[keep],
+                      pwindow = width[keep], swindow = rep_len(1L, sum(keep)),
+                      onset = onset[keep])
+  for (cov in covariates) cases[[cov]] <- linelist[[cov]][keep]
+
   structure(
     list(
       n_death = length(death_delay),
@@ -148,6 +182,7 @@ prepare_cfr_data <- function(linelist, obs_time = NULL, t0 = NULL,
       n_cases = sum(keep),
       n_deaths = length(death_delay),
       n_recoveries = length(recovery_delay),
+      cases = cases,
       t0 = t0,
       obs_time = if (retrospective) as.Date(NA) else obs_time
     ),

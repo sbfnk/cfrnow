@@ -120,3 +120,20 @@ test_that("a recovery before onset is dropped as unusable", {
   expect_equal(d$n_cases, 1L)      # bad record dropped
   expect_equal(d$n_recovery, 1L)   # case 2 is a valid recovery
 })
+
+test_that("onset and covariates are carried through to the cases frame", {
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-01") + c(0, 1, 2),
+    death_date = as.Date(c("2026-01-05", NA, NA)),
+    region = c("A", "B", "A")
+  )
+  d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"),
+                        covariates = "region")
+  expect_true(all(c("y", "outcome", "pwindow", "swindow", "onset", "region")
+                  %in% names(d$cases)))
+  expect_equal(nrow(d$cases), d$n_cases)
+  expect_equal(sum(d$cases$outcome == 1), d$n_deaths)
+  cure <- as_epidist_cure_model(d)
+  expect_true("region" %in% names(cure))
+  expect_s3_class(cure$onset, "Date")
+})

@@ -48,27 +48,7 @@ NULL
 #' @export
 as_epidist_cure_model <- function(data) {
   if (inherits(data, "cfrnow_data")) {
-    rows <- function(n, y, code, width) {
-      if (n > 0) {
-        data.frame(y = as.integer(y), outcome = code, pwindow = width,
-                   swindow = 1)
-      } else {
-        NULL
-      }
-    }
-    resolved <- if (data$n_resolved > 0) {
-      data.frame(y = 0L, outcome = .CURE_RESOLVED, pwindow = 1,
-                 swindow = 1)[rep(1, data$n_resolved), ]
-    } else {
-      NULL
-    }
-    data <- rbind(
-      rows(data$n_deaths, data$death_delay, .CURE_DEATH, data$death_width),
-      rows(data$n_recovery, data$recovery_delay, .CURE_RECOVERY,
-           data$recovery_width),
-      resolved,
-      rows(data$n_cens, data$censor_time, .CURE_CENSORED, data$censor_width)
-    )
+    data <- data$cases                                 # one row per kept case
   }
   stopifnot(c("y", "outcome", "pwindow", "swindow") %in% names(data))
   data <- as.data.frame(data)
