@@ -29,19 +29,27 @@ naive_cfr <- function(n_deaths, n_cases) {
   dr <- posterior::as_draws_df(object)
   if (!"b_cfr_Intercept" %in% posterior::variables(dr)) {
     stop("summary() supports intercept-only `cfr` fits; for a `cfr ~ x` fit ",
-         "use brms::posterior_epred() on the fit directly.", call. = FALSE)
+      "use brms::posterior_epred() on the fit directly.",
+      call. = FALSE
+    )
   }
   fam <- object$cfrnow$family
   scale2 <- if (fam == "lognormal") "sigma" else "shape"
-  d <- .delay_moments(dr, "b_Intercept",
-                      paste0("b_", scale2, "_Intercept"), fam)
-  res <- data.frame(cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
-                    delay_mean = d$mean, delay_sd = d$sd)
+  d <- .delay_moments(
+    dr, "b_Intercept",
+    paste0("b_", scale2, "_Intercept"), fam
+  )
+  res <- data.frame(
+    cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
+    delay_mean = d$mean, delay_sd = d$sd
+  )
   if (isTRUE(object$cfrnow$use_recovery)) {
     rfam <- object$cfrnow$recovery_family
     rscale2 <- if (rfam == "lognormal") "sigma" else "shape"
-    r <- .delay_moments(dr, "b_rmu_Intercept",
-                        paste0("b_r", rscale2, "_Intercept"), rfam)
+    r <- .delay_moments(
+      dr, "b_rmu_Intercept",
+      paste0("b_r", rscale2, "_Intercept"), rfam
+    )
     res$recovery_mean <- r$mean
     res$recovery_sd <- r$sd
   }
@@ -82,7 +90,8 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   qs <- .cfr_quantities(object)
   qcols <- paste0("q", probs * 100)
   sm <- posterior::summarise_draws(
-    qs, mean = mean,
+    qs,
+    mean = mean,
     stats::setNames(lapply(probs, function(p) {
       function(x) stats::quantile(x, p, names = FALSE)
     }), qcols),
@@ -94,8 +103,10 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   cfr_post_sd <- stats::sd(posterior::extract_variable(qs, "cfr"))
   prior_sd <- object$cfrnow$cfr_prior_sd
   low_info <- !is.na(prior_sd) && cfr_post_sd > info_tol * prior_sd
-  attr(out, "naive_cfr") <- naive_cfr(object$cfrnow$n_deaths,
-                                      object$cfrnow$n_cases)
+  attr(out, "naive_cfr") <- naive_cfr(
+    object$cfrnow$n_deaths,
+    object$cfrnow$n_cases
+  )
   attr(out, "n_cases") <- object$cfrnow$n_cases
   attr(out, "n_deaths") <- object$cfrnow$n_deaths
   attr(out, "cfr_prior_sd") <- prior_sd
@@ -109,13 +120,17 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
 print.cfrnow_fit <- function(x, ...) {
   s <- summary(x)
   message("<cfrnow_fit> ", x$cfrnow$family, " delay")
-  message("  cases: ", x$cfrnow$n_cases,
-          "   deaths by cut-off: ", x$cfrnow$n_deaths,
-          "   naive CFR: ", round(attr(s, "naive_cfr"), 3))
+  message(
+    "  cases: ", x$cfrnow$n_cases,
+    "   deaths by cut-off: ", x$cfrnow$n_deaths,
+    "   naive CFR: ", round(attr(s, "naive_cfr"), 3)
+  )
   print(s)
   if (isTRUE(attr(s, "cfr_low_information"))) {
-    message("  ! CFR only weakly identified (posterior close to prior); ",
-            "few resolved deaths - interpret with caution.")
+    message(
+      "  ! CFR only weakly identified (posterior close to prior); ",
+      "few resolved deaths - interpret with caution."
+    )
   }
   if (any(s$rhat > 1.01, na.rm = TRUE)) {
     message("  ! some Rhat > 1.01 - chains may not have converged.")

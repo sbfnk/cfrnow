@@ -20,7 +20,8 @@
     }
   }
   stop("delay parameters must be fixed numbers or Normal() priors.",
-       call. = FALSE)
+    call. = FALSE
+  )
 }
 
 # One brms prior row for a dpar. `log_link` transforms to the link scale: a
@@ -56,9 +57,13 @@
   } else {
     list(class = "Intercept")
   }
-  do.call(brms::set_prior,
-          c(list(sprintf("normal(%.6f, %.6f)", log(shc / rtc), vlog)),
-            prior_args))
+  do.call(
+    brms::set_prior,
+    c(
+      list(sprintf("normal(%.6f, %.6f)", log(shc / rtc), vlog)),
+      prior_args
+    )
+  )
 }
 
 # A distspec delay -> list(family, prior). `main = TRUE` targets the death delay
@@ -66,22 +71,28 @@
 .delay_family_prior <- function(delay, main = TRUE) {
   if (!inherits(delay, "dist_spec")) {
     stop("`delay` must be a distspec distribution, ",
-         "e.g. LogNormal() or Gamma().", call. = FALSE)
+      "e.g. LogNormal() or Gamma().",
+      call. = FALSE
+    )
   }
   fam <- get_distribution(delay)
   pars <- get_parameters(delay)
   loc_dpar <- if (main) "" else "rmu"
   if (fam == "lognormal") {
     scale_dpar <- if (main) "sigma" else "rsigma"
-    prior <- c(.prior_row(.param_spec(pars$meanlog), loc_dpar, FALSE),
-               .prior_row(.param_spec(pars$sdlog), scale_dpar, TRUE))
+    prior <- c(
+      .prior_row(.param_spec(pars$meanlog), loc_dpar, FALSE),
+      .prior_row(.param_spec(pars$sdlog), scale_dpar, TRUE)
+    )
     list(family = brms::lognormal(), prior = prior)
   } else if (fam == "gamma") {
     scale_dpar <- if (main) "shape" else "rshape"
     sh <- .param_spec(pars$shape)
     rate_spec <- .param_spec(pars$rate)
-    prior <- c(.gamma_mu_prior(sh, rate_spec, loc_dpar),
-               .prior_row(sh, scale_dpar, TRUE))
+    prior <- c(
+      .gamma_mu_prior(sh, rate_spec, loc_dpar),
+      .prior_row(sh, scale_dpar, TRUE)
+    )
     list(family = stats::Gamma(link = "log"), prior = prior)
   } else {
     stop("cfrnow supports LogNormal() and Gamma() delays only.", call. = FALSE)
@@ -102,11 +113,14 @@
   obj <- function(par) {
     sum((moments(par[1], exp(par[2])) - c(cfr_mean, cfr_sd))^2)
   }
-  init <- c(stats::qlogis(cfr_mean),
-            log(cfr_sd / (cfr_mean * (1 - cfr_mean) + 1e-6) + 1e-3))
+  init <- c(
+    stats::qlogis(cfr_mean),
+    log(cfr_sd / (cfr_mean * (1 - cfr_mean) + 1e-6) + 1e-3)
+  )
   opt <- stats::optim(init, obj, method = "Nelder-Mead")
   brms::set_prior(sprintf("normal(%.4f, %.4f)", opt$par[1], exp(opt$par[2])),
-                  class = "Intercept", dpar = "cfr")
+    class = "Intercept", dpar = "cfr"
+  )
 }
 
 # A distspec Beta() CFR prior -> the matching logit-scale brms prior.

@@ -64,7 +64,8 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   }
   if (!"death_date" %in% names(linelist)) {
     stop("`linelist` needs a `death_date` column (NA for non-fatal cases).",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 
   optional_date_col <- function(col, default) {
@@ -83,12 +84,12 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   t0 <- as.Date(t0)
 
   onset_lo_day <- as.numeric(onset_lo - t0)
-  width <- as.numeric(onset_up - onset_lo) + 1   # onset-window width, days
+  width <- as.numeric(onset_up - onset_lo) + 1 # onset-window width, days
   obs_offset <- if (retrospective) Inf else as.numeric(obs_time - t0)
 
-  death_day <- as.numeric(death - t0)                 # NA for non-fatal
+  death_day <- as.numeric(death - t0) # NA for non-fatal
   is_death <- !is.na(death_day) & death_day <= obs_offset
-  delay <- death_day - onset_lo_day                   # from onset-window start
+  delay <- death_day - onset_lo_day # from onset-window start
   # Recovered by the cut-off (and not a death by the cut-off) = resolved.
   recovery_day <- as.numeric(recovery - t0)
   recovered <- !is.na(recovery_day) & recovery_day <= obs_offset & !is_death
@@ -102,8 +103,10 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   n_dropped <- sum(bad)
   if (n_dropped > 0) {
     warning(n_dropped, " unusable record(s) dropped ",
-            "(missing onset, inverted window, bad onset-to-death delay, ",
-            "or recovery before onset)", call. = FALSE)
+      "(missing onset, inverted window, bad onset-to-death delay, ",
+      "or recovery before onset)",
+      call. = FALSE
+    )
   }
 
   # Real-time: a case whose onset window opens after the cut-off is not yet
@@ -117,7 +120,7 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   keep <- !bad & !future
   is_death <- is_death & keep
   recovered <- recovered & keep
-  is_surv <- keep & !is_death        # every kept non-death
+  is_surv <- keep & !is_death # every kept non-death
 
   death_delay <- as.integer(round(delay[is_death]))
   death_width <- width[is_death]
@@ -162,9 +165,11 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
     y_case[surv_untimed] <-
       as.integer(pmax(obs_offset + 1 - onset_lo_day[surv_untimed], 0))
   }
-  cases <- data.frame(y = y_case[keep], outcome = outcome_case[keep],
-                      pwindow = width[keep], swindow = rep_len(1L, sum(keep)),
-                      onset = onset[keep])
+  cases <- data.frame(
+    y = y_case[keep], outcome = outcome_case[keep],
+    pwindow = width[keep], swindow = rep_len(1L, sum(keep)),
+    onset = onset[keep]
+  )
   for (cov in covariates) cases[[cov]] <- linelist[[cov]][keep]
 
   structure(

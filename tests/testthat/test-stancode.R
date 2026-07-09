@@ -10,8 +10,10 @@ stancode_for <- function(cure, delay, recovery_delay = NULL) {
     prior <- c(prior, rd$prior)
     attr(cure, "recovery_family") <- brms:::validate_family(rd$family)
   }
-  epidist::epidist(cure, formula = mu ~ 1, family = dd$family, prior = prior,
-                   merge_priors = FALSE, fn = brms::make_stancode)
+  epidist::epidist(cure,
+    formula = mu ~ 1, family = dd$family, prior = prior,
+    merge_priors = FALSE, fn = brms::make_stancode
+  )
 }
 
 test_that("a death-only lognormal fit generates the cure lpmf", {
@@ -34,14 +36,16 @@ test_that("a gamma fit generates a gamma cure lpmf", {
 })
 
 test_that("a two-outcome fit generates recovery branches with its own family", {
-  ll <- simulate_linelist(n = 200, cfr = 0.4, delay = Gamma(mean = 12, sd = 6),
-                          recovery = LogNormal(mean = 20, sd = 8))
+  ll <- simulate_linelist(
+    n = 200, cfr = 0.4, delay = Gamma(mean = 12, sd = 6),
+    recovery = LogNormal(mean = 20, sd = 8)
+  )
   cure <- as_epidist_cure_model(prepare_cfr_data(ll, obs_time = NULL))
   expect_true(attr(cure, "use_recovery"))
   code <- stancode_for(
     cure, Gamma(shape = Normal(4, 1), rate = Normal(0.3, 0.1)),
     recovery_delay = LogNormal(meanlog = Normal(2.9, 0.3), sdlog = Normal(0.5, 0.2))
   )
-  expect_true(grepl("outcome == 2", code))     # timed-recovery branch present
-  expect_true(grepl("rmu", code))              # recovery params are r-prefixed
+  expect_true(grepl("outcome == 2", code)) # timed-recovery branch present
+  expect_true(grepl("rmu", code)) # recovery params are r-prefixed
 })

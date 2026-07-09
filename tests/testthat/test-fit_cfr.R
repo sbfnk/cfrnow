@@ -6,8 +6,10 @@ skip_if_no_cmdstan <- function() {
 
 # shared sampler settings for the (slow) end-to-end fits
 fit_quick <- function(d, ...) {
-  fit_cfr(d, backend = "cmdstanr", chains = 2, iter = 800, warmup = 400,
-          refresh = 0, seed = 1, ...)
+  fit_cfr(d,
+    backend = "cmdstanr", chains = 2, iter = 800, warmup = 400,
+    refresh = 0, seed = 1, ...
+  )
 }
 
 otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
@@ -16,7 +18,7 @@ test_that("a retrospective fit matches the naive proportion", {
   skip_if_no_cmdstan()
   set.seed(11)
   ll <- simulate_linelist(n = 1500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
-  d <- prepare_cfr_data(ll, obs_time = NULL)          # every case resolved
+  d <- prepare_cfr_data(ll, obs_time = NULL) # every case resolved
   s <- summary(fit_quick(d, delay = otd, cfr_prior = Beta(1, 1)))
   # with every case resolved the cure model reduces to deaths / cases
   expect_equal(s$q50[s$quantity == "cfr"], attr(s, "naive_cfr"), tolerance = 0.03)
@@ -25,13 +27,15 @@ test_that("a retrospective fit matches the naive proportion", {
 test_that("real-time correction lifts above naive and covers truth", {
   skip_if_no_cmdstan()
   set.seed(12)
-  ll <- simulate_linelist(n = 2000, cfr = 0.6, onset_days = 40,
-                          delay = LogNormal(2.4, 0.5))
+  ll <- simulate_linelist(
+    n = 2000, cfr = 0.6, onset_days = 40,
+    delay = LogNormal(2.4, 0.5)
+  )
   d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
   s <- summary(fit_quick(d, delay = otd, cfr_prior = Beta(1, 1)))
   cfr <- s[s$quantity == "cfr", ]
-  expect_gt(cfr[["q50"]], attr(s, "naive_cfr"))     # corrected > naive
-  expect_lt(cfr[["q2.5"]], 0.6)                      # 95% CrI covers the truth
+  expect_gt(cfr[["q50"]], attr(s, "naive_cfr")) # corrected > naive
+  expect_lt(cfr[["q2.5"]], 0.6) # 95% CrI covers the truth
   expect_gt(cfr[["q97.5"]], 0.6)
   expect_true(all(s$rhat < 1.05))
 })
@@ -39,12 +43,18 @@ test_that("real-time correction lifts above naive and covers truth", {
 test_that("a gamma delay recovers the CFR and delay moments", {
   skip_if_no_cmdstan()
   set.seed(2)
-  ll <- simulate_linelist(n = 2000, cfr = 0.4, onset_days = 40,
-                          delay = Gamma(mean = 8, sd = 4))
+  ll <- simulate_linelist(
+    n = 2000, cfr = 0.4, onset_days = 40,
+    delay = Gamma(mean = 8, sd = 4)
+  )
   d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
-  s <- summary(fit_quick(d, delay = Gamma(shape = Normal(4, 1),
-                                          rate = Normal(0.5, 0.2)),
-                         cfr_prior = Beta(1, 1)))
+  s <- summary(fit_quick(d,
+    delay = Gamma(
+      shape = Normal(4, 1),
+      rate = Normal(0.5, 0.2)
+    ),
+    cfr_prior = Beta(1, 1)
+  ))
   expect_lt(s[s$quantity == "cfr", "q2.5"], 0.4)
   expect_gt(s[s$quantity == "cfr", "q97.5"], 0.4)
   expect_equal(s[s$quantity == "delay_mean", "q50"], 8, tolerance = 0.8)
@@ -55,9 +65,11 @@ test_that("a fixed delay runs the Ghani/Nishiura estimator (delay held constant)
   set.seed(4)
   ll <- simulate_linelist(n = 1500, cfr = 0.5, delay = LogNormal(2.4, 0.5))
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  s <- summary(fit_quick(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
-                         cfr_prior = Beta(1, 1)))
-  expect_true(is.na(s[s$quantity == "delay_mean", "rhat"]))   # delay is constant
+  s <- summary(fit_quick(d,
+    delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+    cfr_prior = Beta(1, 1)
+  ))
+  expect_true(is.na(s[s$quantity == "delay_mean", "rhat"])) # delay is constant
   expect_lt(s[s$quantity == "cfr", "q2.5"], 0.5)
   expect_gt(s[s$quantity == "cfr", "q97.5"], 0.5)
 })
@@ -69,28 +81,32 @@ test_that("the formula interface puts covariates on the CFR", {
   b <- simulate_linelist(n = 1200, cfr = 0.6, delay = LogNormal(2.4, 0.5))
   da <- as_epidist_cure_model(prepare_cfr_data(a, obs_time = NULL))
   db <- as_epidist_cure_model(prepare_cfr_data(b, obs_time = NULL))
-  da$grp <- "low"; db$grp <- "high"
+  da$grp <- "low"
+  db$grp <- "high"
   d <- as_epidist_cure_model(rbind(da, db))
   fit <- fit_quick(d, delay = otd, formula = brms::bf(mu ~ 1, cfr ~ grp))
   fe <- brms::fixef(fit)
   expect_true("cfr_grplow" %in% rownames(fe))
-  expect_lt(fe["cfr_grplow", "Estimate"], 0)          # low group < high group
+  expect_lt(fe["cfr_grplow", "Estimate"], 0) # low group < high group
 })
 
 test_that("a two-outcome fit uses recovery timing (own family) and recovers F_R", {
   skip_if_no_cmdstan()
   set.seed(5)
-  ll <- simulate_linelist(n = 2000, cfr = 0.4, onset_days = 40,
-                          delay = Gamma(mean = 12.75, sd = 7),
-                          recovery = LogNormal(mean = 21, sd = 9))
+  ll <- simulate_linelist(
+    n = 2000, cfr = 0.4, onset_days = 40,
+    delay = Gamma(mean = 12.75, sd = 7),
+    recovery = LogNormal(mean = 21, sd = 9)
+  )
   d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
   fit <- fit_quick(d,
     delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08)),
     recovery_delay = LogNormal(meanlog = Normal(2.9, 0.3), sdlog = Normal(0.5, 0.2)),
-    cfr_prior = Beta(1, 1))
-  expect_equal(fit$cfrnow$recovery_family, "lognormal")   # differs from gamma death
+    cfr_prior = Beta(1, 1)
+  )
+  expect_equal(fit$cfrnow$recovery_family, "lognormal") # differs from gamma death
   s <- summary(fit)
-  rm <- s[s$quantity == "recovery_mean", ]                # true 21
+  rm <- s[s$quantity == "recovery_mean", ] # true 21
   expect_lt(rm[["q2.5"]], 21)
   expect_gt(rm[["q97.5"]], 21)
 })
@@ -98,11 +114,15 @@ test_that("a two-outcome fit uses recovery timing (own family) and recovers F_R"
 test_that("a young outbreak is flagged low-information and print warns", {
   skip_if_no_cmdstan()
   set.seed(10)
-  ll <- simulate_linelist(n = 25, cfr = 0.5, onset_days = 10,
-                          delay = LogNormal(2.4, 0.5))
+  ll <- simulate_linelist(
+    n = 25, cfr = 0.5, onset_days = 10,
+    delay = LogNormal(2.4, 0.5)
+  )
   d <- prepare_cfr_data(ll, obs_time = min(ll$onset_date) + 3)
-  fit <- fit_quick(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
-                   cfr_prior = Beta(1, 1))
+  fit <- fit_quick(d,
+    delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+    cfr_prior = Beta(1, 1)
+  )
   expect_true(attr(summary(fit), "cfr_low_information"))
   expect_message(print(fit), "weakly identified")
 })

@@ -5,8 +5,8 @@ test_that("retrospective fit resolves every non-death and counts every death", {
   )
   d <- prepare_cfr_data(ll, obs_time = NULL)
   expect_equal(d$n_deaths, 2L)
-  expect_equal(d$n_resolved, 2L)      # both survivors treated as resolved
-  expect_equal(d$n_cens, 0L)          # nothing right-censored retrospectively
+  expect_equal(d$n_resolved, 2L) # both survivors treated as resolved
+  expect_equal(d$n_cens, 0L) # nothing right-censored retrospectively
   expect_equal(d$n_cases, 4L)
 })
 
@@ -17,8 +17,8 @@ test_that("real-time cut-off censors survivors and hides later deaths", {
     death_date = as.Date(c("2026-01-05", "2026-01-20", NA))
   )
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
-  expect_equal(d$n_deaths, 1L)        # only the death dated on/before cut-off
-  expect_equal(d$n_cens, 2L)          # the future death + the still-alive case
+  expect_equal(d$n_deaths, 1L) # only the death dated on/before cut-off
+  expect_equal(d$n_cens, 2L) # the future death + the still-alive case
   expect_equal(d$n_resolved, 0L)
   expect_true(all(d$censor_time >= 0))
 })
@@ -26,11 +26,11 @@ test_that("real-time cut-off censors survivors and hides later deaths", {
 test_that("impossible onset->death delays are dropped with a warning", {
   ll <- data.frame(
     onset_date = as.Date(c("2026-01-10", "2026-01-01")),
-    death_date = as.Date(c("2026-01-05", "2026-01-08"))  # first: death before onset
+    death_date = as.Date(c("2026-01-05", "2026-01-08")) # first: death before onset
   )
   expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
   expect_equal(d$n_deaths, 1L)
-  expect_equal(d$n_cases, 1L)         # the bad record is dropped entirely
+  expect_equal(d$n_cases, 1L) # the bad record is dropped entirely
 })
 
 test_that("missing onset dates are dropped with a warning, not silently kept", {
@@ -39,8 +39,8 @@ test_that("missing onset dates are dropped with a warning, not silently kept", {
     death_date = as.Date(c("2026-01-10", "2026-01-08", NA))
   )
   expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
-  expect_equal(d$n_cases, 2L)         # the NA-onset row is dropped
-  expect_equal(d$n_deaths, 1L)        # not counted as a phantom death
+  expect_equal(d$n_cases, 2L) # the NA-onset row is dropped
+  expect_equal(d$n_deaths, 1L) # not counted as a phantom death
   expect_false(anyNA(d$death_delay))
   expect_false(is.na(d$n_cases))
   expect_false(is.na(d$n_resolved))
@@ -50,7 +50,7 @@ test_that("inverted onset windows are dropped rather than producing negative wid
   ll <- data.frame(
     onset_date = as.Date("2026-01-05"),
     onset_lower = as.Date("2026-01-05"),
-    onset_upper = as.Date("2026-01-01"),   # upper before lower
+    onset_upper = as.Date("2026-01-01"), # upper before lower
     death_date = as.Date("2026-01-10")
   )
   expect_warning(d <- prepare_cfr_data(ll, obs_time = NULL), "unusable")
@@ -60,17 +60,21 @@ test_that("inverted onset windows are dropped rather than producing negative wid
 
 test_that("cases with onset after the cut-off are excluded with a message", {
   ll <- data.frame(
-    onset_date = as.Date(c("2026-01-01", "2026-01-20")),  # second onsets post-cutoff
+    onset_date = as.Date(c("2026-01-01", "2026-01-20")), # second onsets post-cutoff
     death_date = as.Date(c("2026-01-08", NA))
   )
-  expect_message(d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10")),
-                 "onset after the cut-off")
+  expect_message(
+    d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10")),
+    "onset after the cut-off"
+  )
   expect_equal(d$n_cases, 1L)
 })
 
 test_that("retrospective obs_time field is a Date, matching real-time mode", {
-  ll <- data.frame(onset_date = as.Date("2026-01-01"),
-                   death_date = as.Date("2026-01-10"))
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-01"),
+    death_date = as.Date("2026-01-10")
+  )
   expect_s3_class(prepare_cfr_data(ll, obs_time = NULL)$obs_time, "Date")
 })
 
@@ -82,20 +86,20 @@ test_that("onset windows widen the primary censoring width", {
     death_date = as.Date("2026-01-12")
   )
   d <- prepare_cfr_data(ll, obs_time = NULL)
-  expect_equal(d$death_width, 4)      # (upper - lower) + 1
+  expect_equal(d$death_width, 4) # (upper - lower) + 1
 })
 
 test_that("recovered-by-cutoff cases are timed recoveries, not censored", {
   ll <- data.frame(
     onset_date = as.Date("2026-01-01") + c(0, 1, 2),
     death_date = as.Date(c("2026-01-05", NA, NA)),
-    recovery_date = as.Date(c(NA, "2026-01-08", NA))  # case 2 recovered by cut-off
+    recovery_date = as.Date(c(NA, "2026-01-08", NA)) # case 2 recovered by cut-off
   )
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
-  expect_equal(d$n_deaths, 1L)      # case 1 died
-  expect_equal(d$n_recovery, 1L)    # case 2 recovered -> timed recovery
-  expect_equal(d$recovery_delay, 6L)  # onset 2026-01-02 to recovery 2026-01-08
-  expect_equal(d$n_cens, 1L)        # case 3 still unresolved -> censored
+  expect_equal(d$n_deaths, 1L) # case 1 died
+  expect_equal(d$n_recovery, 1L) # case 2 recovered -> timed recovery
+  expect_equal(d$recovery_delay, 6L) # onset 2026-01-02 to recovery 2026-01-08
+  expect_equal(d$n_cens, 1L) # case 3 still unresolved -> censored
 })
 
 test_that("recovery_date absent reproduces the censor-everything behaviour", {
@@ -104,7 +108,7 @@ test_that("recovery_date absent reproduces the censor-everything behaviour", {
     death_date = as.Date(c(NA, NA))
   )
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
-  expect_equal(d$n_resolved, 0L)   # no recovery info -> both censored
+  expect_equal(d$n_resolved, 0L) # no recovery info -> both censored
   expect_equal(d$n_cens, 2L)
 })
 
@@ -112,13 +116,13 @@ test_that("a recovery before onset is dropped as unusable", {
   ll <- data.frame(
     onset_date = as.Date(c("2026-01-10", "2026-01-01")),
     death_date = as.Date(c(NA, NA)),
-    recovery_date = as.Date(c("2026-01-05", "2026-01-09"))  # case 1: recovers pre-onset
+    recovery_date = as.Date(c("2026-01-05", "2026-01-09")) # case 1: recovers pre-onset
   )
   expect_warning(
     d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-15")), "unusable"
   )
-  expect_equal(d$n_cases, 1L)      # bad record dropped
-  expect_equal(d$n_recovery, 1L)   # case 2 is a valid recovery
+  expect_equal(d$n_cases, 1L) # bad record dropped
+  expect_equal(d$n_recovery, 1L) # case 2 is a valid recovery
 })
 
 test_that("onset and covariates are carried through to the cases frame", {
@@ -127,10 +131,12 @@ test_that("onset and covariates are carried through to the cases frame", {
     death_date = as.Date(c("2026-01-05", NA, NA)),
     region = c("A", "B", "A")
   )
-  d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"),
-                        covariates = "region")
+  d <- prepare_cfr_data(ll,
+    obs_time = as.Date("2026-01-10"),
+    covariates = "region"
+  )
   expect_true(all(c("y", "outcome", "pwindow", "swindow", "onset", "region")
-                  %in% names(d$cases)))
+  %in% names(d$cases)))
   expect_equal(nrow(d$cases), d$n_cases)
   expect_equal(sum(d$cases$outcome == 1), d$n_deaths)
   cure <- as_epidist_cure_model(d)

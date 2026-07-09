@@ -48,7 +48,7 @@ NULL
 #' @export
 as_epidist_cure_model <- function(data) {
   if (inherits(data, "cfrnow_data")) {
-    data <- data$cases                                 # one row per kept case
+    data <- data$cases # one row per kept case
   }
   stopifnot(c("y", "outcome", "pwindow", "swindow") %in% names(data))
   data <- as.data.frame(data)
@@ -83,7 +83,8 @@ assert_epidist.epidist_cure_model <- function(data, ...) {
 .assert_delay_family <- function(family, what = "delay") {
   if (!family$family %in% c("lognormal", "gamma")) {
     stop("cfrnow supports lognormal() and Gamma() ", what, "s only.",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 }
 
@@ -97,7 +98,7 @@ epidist_family_model.epidist_cure_model <- function(data, family, ...) {
     rfam <- attr(data, "recovery_family")
     if (is.null(rfam)) rfam <- family
     .assert_delay_family(rfam, "recovery delay")
-    dpars <- c(dpars, paste0("r", rfam$dpars))         # recovery: own family
+    dpars <- c(dpars, paste0("r", rfam$dpars)) # recovery: own family
     links <- c(links, .delay_links(rfam))
   }
   brms::custom_family(
@@ -130,13 +131,18 @@ epidist_model_prior.epidist_cure_model <- function(data, formula, ...) NULL
 # The native Stan parameterisation brms uses for a family's mu-form, read out of
 # a dummy model (as epidist does), so primarycensored gets the right arguments.
 .family_stan_param <- function(family_name) {
-  code <- brms::make_stancode(y ~ 1, data = data.frame(y = c(1, 2)),
-                              family = family_name)
+  code <- brms::make_stancode(y ~ 1,
+    data = data.frame(y = c(1, 2)),
+    family = family_name
+  )
   pat <- sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ([^)]+)\\)", family_name)
   hits <- grep("mu", regmatches(code, gregexpr(pat, code))[[1]],
-               fixed = TRUE, value = TRUE)
-  sub(")", "", sub(sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ", family_name),
-                   "", hits[1]), fixed = TRUE)
+    fixed = TRUE, value = TRUE
+  )
+  sub(")", "", sub(
+    sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ", family_name),
+    "", hits[1]
+  ), fixed = TRUE)
 }
 
 # Fill a `<<hole>>` template from inst/stan with a named list of replacements.
@@ -184,14 +190,18 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
   template <- "cure_lpmf_death.stan"
   if (use_recovery) {
     recovery_dpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
-    holes <- c(holes, .recovery_holes(family, attr(data, "recovery_family"),
-                                      recovery_dpars))
+    holes <- c(holes, .recovery_holes(
+      family, attr(data, "recovery_family"),
+      recovery_dpars
+    ))
     template <- "cure_lpmf_two_outcome.stan"
   }
   lpmf <- .fill_stan_template(template, holes)
 
-  brms::stanvar(scode = primarycensored::pcd_load_stan_functions(),
-                block = "functions") +
+  brms::stanvar(
+    scode = primarycensored::pcd_load_stan_functions(),
+    block = "functions"
+  ) +
     brms::stanvar(scode = lpmf, block = "functions") +
     brms::stanvar(scode = "array[0] real primary_params;", block = "parameters")
 }
