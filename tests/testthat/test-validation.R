@@ -43,6 +43,27 @@ test_that(".cfr_prior_sd reads a normal cfr prior and is NA otherwise", {
   expect_true(is.finite(s) && s > 0 && s < 0.5)       # (0,1)-scale prior sd
 })
 
+test_that("cfr_prior moment-matches the CFR-scale mean and sd", {
+  p <- cfr_prior(mean = 0.3, sd = 0.1)
+  expect_equal(p$dpar, "cfr")
+  expect_equal(.cfr_prior_sd(p), 0.1, tolerance = 0.02)   # induced sd, CFR scale
+  m <- regmatches(p$prior,
+                  regexec("normal\\(([^,]+), ([^)]+)\\)", p$prior))[[1]]
+  set.seed(1)
+  induced_mean <- mean(stats::plogis(stats::rnorm(1e5, as.numeric(m[2]),
+                                                  as.numeric(m[3]))))
+  expect_equal(induced_mean, 0.3, tolerance = 0.02)
+})
+
+test_that("fix_delay returns constant priors for the delay parameters", {
+  p <- fix_delay(brms::lognormal(), mean = 12.75, sd = 7)
+  expect_true(all(grepl("^constant\\(", p$prior)))
+  expect_equal(sum(p$class == "Intercept"), 2L)
+  expect_true(any(p$dpar == "sigma"))
+  loc <- as.numeric(sub("constant\\(([^)]+)\\)", "\\1", p$prior[p$dpar == ""]))
+  expect_equal(loc, log(12.75) - log1p((7 / 12.75)^2) / 2, tolerance = 1e-6)
+})
+
 test_that("simulate_linelist requires a delay", {
   expect_error(simulate_linelist(n = 5), "supply a `delay`")
 })

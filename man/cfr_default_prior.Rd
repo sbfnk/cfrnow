@@ -10,12 +10,14 @@ cfr_default_prior()
 A \code{brmsprior}.
 }
 \description{
-A weakly-informative logit-normal prior on the case fatality ratio, roughly
-flat on [0, 1]. Used by \code{\link[=fit_cfr]{fit_cfr()}} when no \code{prior} is supplied.
+A weakly-informative CFR prior, roughly flat on [0, 1]
+(\code{cfr_prior(0.5, 0.29)}). Used by \code{\link[=fit_cfr]{fit_cfr()}} when no \code{prior} is supplied.
 }
 \seealso{
 Other fit:
+\code{\link[=cfr_prior]{cfr_prior()}},
 \code{\link[=fit_cfr]{fit_cfr()}},
+\code{\link[=fix_delay]{fix_delay()}},
 \code{\link[=summary.cfrnow_fit]{summary.cfrnow_fit()}}
 }
 \concept{fit}

@@ -8,6 +8,7 @@ fit_cfr(
   data,
   formula = mu ~ 1,
   family = brms::lognormal(),
+  recovery_family = family,
   prior = cfr_default_prior(),
   ...
 )
@@ -23,8 +24,10 @@ Defaults to \code{mu ~ 1}.}
 \item{family}{The delay family: \code{\link[brms:lognormal]{brms::lognormal()}} (default) or
 \code{\link[brms:Gamma]{brms::Gamma()}}.}
 
-\item{prior}{\code{brms} priors. Defaults to \code{\link[=cfr_default_prior]{cfr_default_prior()}}; supply your
-own (e.g. adding delay-parameter priors) to override.}
+\item{recovery_family}{Family for the onset-to-recovery delay in a
+two-outcome fit; defaults to \code{family}. Ignored without recovery data.}
+
+\item{prior}{\code{brms} priors. Defaults to \code{\link[=cfr_default_prior]{cfr_default_prior()}}.}
 
 \item{...}{Passed to \code{\link[epidist:epidist]{epidist::epidist()}} and on to \code{\link[brms:brm]{brms::brm()}}
 (e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}
@@ -38,17 +41,26 @@ the model is an \code{epidist} subclass, both the CFR and the delay accept \code
 formulas: pass a \code{brms::bf()} to put covariates on either, e.g.
 \code{fit_cfr(d, bf(mu ~ 1, cfr ~ age))}.
 }
+\details{
+Define the CFR prior with \code{\link[=cfr_prior]{cfr_prior()}} (in CFR units) or any \code{brms} prior on
+the logit-scale \code{cfr} intercept. Add \code{\link[=fix_delay]{fix_delay()}} to \code{prior} to hold the
+delay fixed. When the data carry recoveries, a two-outcome fit also estimates
+an onset-to-recovery delay, whose family is \code{recovery_family} (defaulting to
+\code{family}).
+}
 \examples{
 \dontrun{
 ll <- simulate_linelist(n = 500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
 d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 5)
-fit <- fit_cfr(d, backend = "cmdstanr")
+fit <- fit_cfr(d, prior = cfr_prior(0.4, 0.15), backend = "cmdstanr")
 summary(fit)
 }
 }
 \seealso{
 Other fit:
 \code{\link[=cfr_default_prior]{cfr_default_prior()}},
+\code{\link[=cfr_prior]{cfr_prior()}},
+\code{\link[=fix_delay]{fix_delay()}},
 \code{\link[=summary.cfrnow_fit]{summary.cfrnow_fit()}}
 }
 \concept{fit}

@@ -39,8 +39,10 @@ naive_cfr <- function(n_deaths, n_cases) {
   res <- data.frame(cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
                     delay_mean = d$mean, delay_sd = d$sd)
   if (isTRUE(object$cfrnow$use_recovery)) {
+    rfam <- object$cfrnow$recovery_family
+    rscale2 <- if (rfam == "lognormal") "sigma" else "shape"
     r <- .delay_moments(dr, "b_rmu_Intercept",
-                        paste0("b_r", scale2, "_Intercept"), fam)
+                        paste0("b_r", rscale2, "_Intercept"), rfam)
     res$recovery_mean <- r$mean
     res$recovery_sd <- r$sd
   }

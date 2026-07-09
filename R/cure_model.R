@@ -85,25 +85,36 @@ assert_epidist.epidist_cure_model <- function(data, ...) {
   invisible(TRUE)
 }
 
-#' @method epidist_family_model epidist_cure_model
-#' @export
-epidist_family_model.epidist_cure_model <- function(data, family, ...) {
-  if (!family$family %in% c("lognormal", "gamma")) {
-    stop("cfrnow supports lognormal() and Gamma() delays only.", call. = FALSE)
-  }
-  # Per-dpar links: mu from the family, other (positive) delay params default to
-  # log when the base family did not carry an explicit link, then logit for cfr.
-  other_dpars <- setdiff(family$dpars, "mu")
-  other_links <- vapply(other_dpars, function(dp) {
+# Per-dpar links for a delay family: mu from the family, other (positive) params
+# default to log when the base family carried no explicit link.
+.delay_links <- function(family) {
+  other <- setdiff(family$dpars, "mu")
+  ol <- vapply(other, function(dp) {
     l <- family[[paste0("link_", dp)]]
     if (is.null(l) || !nzchar(l)) "log" else l
   }, character(1))
-  delay_links <- c(family$link, other_links)
+  c(family$link, ol)
+}
+
+.assert_delay_family <- function(family, what = "delay") {
+  if (!family$family %in% c("lognormal", "gamma")) {
+    stop("cfrnow supports lognormal() and Gamma() ", what, "s only.",
+         call. = FALSE)
+  }
+}
+
+#' @method epidist_family_model epidist_cure_model
+#' @export
+epidist_family_model.epidist_cure_model <- function(data, family, ...) {
+  .assert_delay_family(family)
   dpars <- c(family$dpars, "cfr")
-  links <- c(delay_links, "logit")
-  if (isTRUE(attr(data, "use_recovery"))) {          # recovery shares the family
-    dpars <- c(dpars, paste0("r", family$dpars))
-    links <- c(links, delay_links)
+  links <- c(.delay_links(family), "logit")
+  if (isTRUE(attr(data, "use_recovery"))) {
+    rf <- attr(data, "recovery_family")
+    if (is.null(rf)) rf <- family
+    .assert_delay_family(rf, "recovery delay")
+    dpars <- c(dpars, paste0("r", rf$dpars))         # recovery: own family
+    links <- c(links, .delay_links(rf))
   }
   brms::custom_family(
     paste0("cfrnow_", family$family),
@@ -132,6 +143,18 @@ epidist_transform_data_model.epidist_cure_model <- function(data, family,
 #' @export
 epidist_model_prior.epidist_cure_model <- function(data, formula, ...) NULL
 
+# The native Stan parameterisation brms uses for a family's mu-form, read out of
+# a dummy model (as epidist does), so primarycensored gets the right arguments.
+.family_stan_param <- function(family_name) {
+  code <- brms::make_stancode(y ~ 1, data = data.frame(y = c(1, 2)),
+                              family = family_name)
+  pat <- sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ([^)]+)\\)", family_name)
+  hits <- regmatches(code, gregexpr(pat, code))[[1]]
+  hit <- hits[grepl("mu", hits, fixed = TRUE)][1]
+  sub(")", "", sub(sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ", family_name),
+                   "", hit), fixed = TRUE)
+}
+
 #' @method epidist_stancode epidist_cure_model
 #' @export
 epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
@@ -142,13 +165,20 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
   delay_dpars <- family$dpars[seq_len(cfr_pos - 1)]
   use_recovery <- cfr_pos < length(family$dpars)
 
-  # death-side param declarations and the family's Stan reparameterisation
+  # death side: declarations and the family's Stan reparameterisation
   DA <- toString(paste0("real ", delay_dpars))
   DB <- family$param
-  # recovery side: same reparameterisation with r-prefixed parameter names
-  RB <- DB
-  for (dp in delay_dpars) RB <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), RB)
-  RA <- toString(paste0("real r", delay_dpars))
+  # recovery side: its own family's dist id and reparameterisation, r-prefixed
+  rdid <- dist_id; RA <- RB <- ""
+  if (use_recovery) {
+    rdpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
+    rf <- attr(data, "recovery_family")
+    if (is.null(rf)) rf <- family
+    rdid <- primarycensored::pcd_stan_dist_id(rf$family, type = "delay")
+    RB <- .family_stan_param(rf$family)
+    for (dp in rf$dpars) RB <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), RB)
+    RA <- toString(paste0("real ", rdpars))
+  }
 
   body <- if (use_recovery) '
     if (outcome == 1) {
@@ -157,14 +187,14 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
           @PID@, primary_params);
     } else if (outcome == 2) {
       return log1m(cfr) + primarycensored_lpmf(
-          y | @DID@, {@RB@}, pwindow, y + swindow, 0.0, positive_infinity(),
+          y | @RDID@, {@RB@}, pwindow, y + swindow, 0.0, positive_infinity(),
           @PID@, primary_params);
     } else if (outcome == 3) {
       return log1m(cfr);
     } else {
       real fbar_d = primarycensored_cdf(y | @DID@, {@DB@}, pwindow, 0.0,
           positive_infinity(), @PID@, primary_params);
-      real fbar_r = primarycensored_cdf(y | @DID@, {@RB@}, pwindow, 0.0,
+      real fbar_r = primarycensored_cdf(y | @RDID@, {@RB@}, pwindow, 0.0,
           positive_infinity(), @PID@, primary_params);
       return log_sum_exp(log(cfr) + log1m(fbar_d), log1m(cfr) + log1m(fbar_r));
     }' else '
@@ -189,7 +219,7 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
   }
   tmpl <- sprintf("\n  real cfrnow_%s_lpmf(%s) {%s\n  }",
                   family_name, sig, body)
-  for (r in list(c("@DID@", dist_id), c("@PID@", primary_id),
+  for (r in list(c("@RDID@", rdid), c("@DID@", dist_id), c("@PID@", primary_id),
                  c("@DB@", DB), c("@RB@", RB))) {
     tmpl <- gsub(r[1], r[2], tmpl, fixed = TRUE)
   }

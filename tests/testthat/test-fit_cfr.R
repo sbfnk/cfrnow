@@ -80,6 +80,36 @@ test_that("the two-outcome fit uses recovery timing and recovers CFR and F_R", {
   expect_gt(rm[["q97.5"]], 21)
 })
 
+test_that("a fixed delay runs the Ghani/Nishiura estimator (delay held constant)", {
+  skip_if_no_cmdstan()
+  set.seed(4)
+  ll <- simulate_linelist(n = 1500, cfr = 0.5, delay = LogNormal(mean = 12.75, sd = 7))
+  d <- prepare_cfr_data(ll, obs_time = NULL)
+  fit <- fit_quick(d, prior = c(cfr_default_prior(),
+                                fix_delay(brms::lognormal(), mean = 12.75, sd = 7)))
+  s <- summary(fit)
+  expect_true(is.na(s[s$quantity == "delay_mean", "rhat"]))   # delay is constant
+  expect_equal(s[s$quantity == "delay_mean", "q50"], 12.75, tolerance = 0.1)
+  expect_lt(s[s$quantity == "cfr", "q2.5"], 0.5)
+  expect_gt(s[s$quantity == "cfr", "q97.5"], 0.5)
+})
+
+test_that("recovery can use a different family from the death delay", {
+  skip_if_no_cmdstan()
+  set.seed(3)
+  ll <- simulate_linelist(n = 2000, cfr = 0.4, onset_days = 40,
+                          delay = Gamma(mean = 12.75, sd = 7),
+                          recovery = LogNormal(mean = 21, sd = 9))
+  d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
+  fit <- fit_quick(d, family = stats::Gamma(link = "log"),
+                   recovery_family = brms::lognormal())
+  expect_equal(fit$cfrnow$recovery_family, "lognormal")
+  s <- summary(fit)
+  rm <- s[s$quantity == "recovery_mean", ]                    # true 21
+  expect_lt(rm[["q2.5"]], 21)
+  expect_gt(rm[["q97.5"]], 21)
+})
+
 test_that("a young outbreak is flagged low-information and print warns", {
   skip_if_no_cmdstan()
   set.seed(10)
