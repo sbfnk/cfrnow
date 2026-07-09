@@ -6,86 +6,49 @@
 \usage{
 fit_cfr(
   data,
-  delay,
-  recovery_delay = NULL,
-  cfr_prior,
-  model = cfrnow_model(),
-  chains = 4,
-  parallel_chains = chains,
-  iter_warmup = 1000,
-  iter_sampling = 1000,
-  seed = NULL,
+  formula = mu ~ 1,
+  family = brms::lognormal(),
+  prior = cfr_default_prior(),
   ...
 )
 }
 \arguments{
-\item{data}{A \code{cfrnow_data} list from \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}.}
+\item{data}{Output of \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}, or an \code{epidist_cure_model} /
+data frame with \code{y}, \code{outcome}, \code{pwindow}, \code{swindow}.}
 
-\item{delay}{Onset-to-death delay as a distspec distribution
-(\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}); required, with no
-default. Each native parameter is co-estimated when given as a \code{Normal()}
-prior, or held fixed when given as a number / \code{\link[distspec:Fixed]{distspec::Fixed()}}; fixing
-the whole delay yields the Ghani/Nishiura fixed-delay estimator. For
-example the BDBV/Isiro onset-to-death prior is a \code{LogNormal} with
-\code{meanlog ~ Normal(2.41, 0.2)} and \code{sdlog ~ Normal(0.51, 0.15)}
-(mean ~= 12.75 d).}
+\item{formula}{A \code{stats::formula} or \code{brms::bf()}. A formula for \code{mu} (the
+delay location) is required; add a \code{cfr ~ ...} part to model the CFR.
+Defaults to \code{mu ~ 1}.}
 
-\item{recovery_delay}{Optional onset-to-recovery delay (a distspec
-distribution, same conventions as \code{delay}). When supplied, cfrnow fits the
-two-outcome mixture-cure model that also uses recovery \emph{timing}: a fatal
-case (probability \code{cfr}) dies at \code{F_D} and a non-fatal case recovers at
-\code{F_R}, so a recovered case contributes \code{(1 - cfr) * f_R(r)} and an
-unresolved case contributes
-\code{cfr * (1 - F_D(t)) + (1 - cfr) * (1 - F_R(t))}.
-This is a mixture over the two outcomes, not a cause-specific-hazards
-competing-risks model. When \code{NULL} (default), recovery timing is ignored
-and recovered cases contribute only the cure factor \code{1 - cfr}. Note this
-mode assumes recoveries among the unresolved are recorded: an actually
-recovered case whose recovery is missing stays censored and, as time
-passes, is pushed toward the fatal branch, biasing \code{cfr} \emph{up} (the mirror
-of incomplete death ascertainment). The death-only default is insensitive
-to this.}
+\item{family}{The delay family: \code{\link[brms:lognormal]{brms::lognormal()}} (default) or
+\code{\link[brms:Gamma]{brms::Gamma()}}.}
 
-\item{cfr_prior}{Prior on the case fatality ratio, as a
-\code{\link[distspec:Beta]{distspec::Beta()}} with fixed shape parameters; required, with no default.
-Because the CFR is only weakly identified early in an outbreak (few deaths
-resolved), this prior can dominate, so choose it deliberately rather than
-reaching for a default. Some reference choices and what they imply (the
-Beta "prior sample size" is \code{shape1 + shape2}, so larger sums pull harder):
-\code{Beta(1, 1)} is uniform on [0, 1] (weakly informative, mean 0.5);
-\code{Beta(1, 9)} has mean 0.1 and favours a low CFR;
-\code{Beta(6.6, 13.4)} has mean 0.33 and is appropriate only for a
-high-fatality pathogen (it is roughly the BDBV/Isiro prior). Specify by
-mean and sd instead if that is easier, e.g. \code{Beta(mean = 0.1, sd = 0.1)}.}
+\item{prior}{\code{brms} priors. Defaults to \code{\link[=cfr_default_prior]{cfr_default_prior()}}; supply your
+own (e.g. adding delay-parameter priors) to override.}
 
-\item{model}{A compiled \code{CmdStanModel}; defaults to \code{\link[=cfrnow_model]{cfrnow_model()}}.}
-
-\item{chains, parallel_chains, iter_warmup, iter_sampling, seed, ...}{Passed to
-\code{CmdStanModel$sample()}. \code{seed} defaults to \code{NULL}, so cmdstanr draws a
-random seed; set it for reproducible fits. Unless you pass your own \code{init},
-the sampler starts each estimated delay parameter and the CFR at their
-prior means (jittered per chain), which avoids the degenerate
-near-zero-delay starts that make cmdstan reject the initial log density.}
+\item{...}{Passed to \code{\link[epidist:epidist]{epidist::epidist()}} and on to \code{\link[brms:brm]{brms::brm()}}
+(e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}
 }
 \value{
-A \code{cfrnow_fit} object wrapping the \code{CmdStanMCMC} fit, \code{data}, the
-\code{delay}/\code{recovery_delay} specifications and whether recovery was modelled.
+A \code{brmsfit} with class \code{cfrnow_fit}; summarise with \code{\link[=summary]{summary()}}.
 }
 \description{
-Fit the real-time mixture-cure CFR model
+A thin wrapper over \code{\link[epidist:epidist]{epidist::epidist()}} for the cfrnow cure model. Because
+the model is an \code{epidist} subclass, both the CFR and the delay accept \code{brms}
+formulas: pass a \code{brms::bf()} to put covariates on either, e.g.
+\code{fit_cfr(d, bf(mu ~ 1, cfr ~ age))}.
 }
 \examples{
 \dontrun{
-ll <- simulate_linelist(n = 300, cfr = 0.55,
-                        delay = LogNormal(mean = 12.75, sd = 7),
-                        recovery = LogNormal(mean = 21, sd = 9))
-d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-15"))
-onset_to_death <- LogNormal(
-  meanlog = Normal(2.41, 0.2),
-  sdlog = Normal(0.51, 0.15)
-)
-fit <- fit_cfr(d, delay = onset_to_death,
-               cfr_prior = Beta(6.6, 13.4))
+ll <- simulate_linelist(n = 500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
+d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 5)
+fit <- fit_cfr(d, backend = "cmdstanr")
 summary(fit)
 }
 }
+\seealso{
+Other fit:
+\code{\link[=cfr_default_prior]{cfr_default_prior()}},
+\code{\link[=summary.cfrnow_fit]{summary.cfrnow_fit()}}
+}
+\concept{fit}

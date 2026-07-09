@@ -6,7 +6,7 @@
 \alias{cfrnow-package}
 \title{cfrnow: Real-Time Case Fatality Ratio via a Mixture-Cure Survival Model}
 \description{
-Estimates a real-time case fatality ratio (CFR) from line-list data using a Bayesian mixture-cure survival model. Each case is fatal with probability equal to the CFR and, when fatal, dies at an interval-censored onset-to-death delay; cases still alive at the observation cut-off are right-censored, which corrects the downward bias of the naive deaths / cases ratio in real time. The onset-to-death delay is co-estimated using the primarycensored analytical censored-distribution machinery.
+Estimates a real-time case fatality ratio (CFR) from line-list data using a Bayesian mixture-cure survival model, registered as an 'epidist' model type so the CFR and the onset-to-death delay both take 'brms' formulas. Each case is fatal with probability equal to the CFR and, when fatal, dies at an interval-censored onset-to-death delay; cases still alive at the observation cut-off are right-censored, which corrects the downward bias of the naive deaths / cases ratio in real time. The delay is co-estimated using the 'primarycensored' censored-distribution machinery.
 }
 \seealso{
 Useful links:

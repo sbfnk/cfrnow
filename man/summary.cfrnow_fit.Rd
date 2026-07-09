@@ -2,9 +2,12 @@
 % Please edit documentation in R/summarise_cfr.R
 \name{summary.cfrnow_fit}
 \alias{summary.cfrnow_fit}
+\alias{print.cfrnow_fit}
 \title{Summarise a mixture-cure CFR fit}
 \usage{
 \method{summary}{cfrnow_fit}(object, probs = c(0.025, 0.5, 0.975), info_tol = 0.9, ...)
+
+\method{print}{cfrnow_fit}(x, ...)
 }
 \arguments{
 \item{object}{A \code{cfrnow_fit} from \code{\link[=fit_cfr]{fit_cfr()}}.}
@@ -15,34 +18,30 @@
 more than this fraction of the prior sd. Defaults to 0.9.}
 
 \item{...}{Unused.}
+
+\item{x}{A \code{cfrnow_fit}.}
 }
 \value{
-A data frame with one row per summarised quantity (\code{cfr},
-\code{delay_mean}, \code{delay_sd}), carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths},
-\code{cfr_prior_sd} and \code{cfr_low_information} attributes.
+A data frame with one row per quantity (\code{cfr}, \code{delay_mean},
+\code{delay_sd}), carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths}, \code{cfr_prior_sd}
+and \code{cfr_low_information} attributes.
 }
 \description{
-Pools the posterior draws of the corrected CFR and the onset-to-death delay
-(mean and standard deviation, in days) and reports quantile summaries with
-convergence diagnostics (\code{rhat}, \code{ess_bulk}). The naive \code{deaths / cases}
-ratio is returned as an attribute for comparison; in real time it
+Reports the corrected CFR and the onset-to-death delay (mean and sd, in days)
+as posterior quantiles with convergence diagnostics (\code{rhat}, \code{ess_bulk}). The
+naive \code{deaths / cases} ratio is returned as an attribute; in real time it
 underestimates the corrected CFR because not every fatal case has died by the
-cut-off. The \code{delay_mean}/\code{delay_sd} summaries (days) are recovered from the
-native parameters as generated quantities, so they are the same whatever
-family the delay used; with a fixed delay they are constant.
+cut-off.
 }
 \details{
-When few deaths have resolved (a young outbreak), the CFR is only weakly
+When few deaths have resolved (a young outbreak) the CFR is only weakly
 identified and its posterior stays close to the prior. This is reported via
 the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd exceeds
 \code{info_tol} times the prior sd.
 }
-\examples{
-\dontrun{
-ll <- simulate_linelist(delay = LogNormal(2.4, 0.5))
-fit <- fit_cfr(prepare_cfr_data(ll),
-               delay = LogNormal(2.4, 0.5),
-               cfr_prior = Beta(1, 1))
-summary(fit)
+\seealso{
+Other fit:
+\code{\link[=cfr_default_prior]{cfr_default_prior()}},
+\code{\link[=fit_cfr]{fit_cfr()}}
 }
-}
+\concept{fit}

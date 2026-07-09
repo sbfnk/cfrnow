@@ -7,8 +7,9 @@ reference:
 - title: Prepare and fit
   contents:
   - prepare_cfr_data
+  - as_epidist_cure_model
   - fit_cfr
-  - cfrnow_model
+  - cfr_default_prior
 - title: Summarise
   contents:
   - summary.cfrnow_fit
