@@ -159,91 +159,59 @@ epidist_model_prior.epidist_cure_model <- function(data, formula, ...) NULL
                    "", hits[1]), fixed = TRUE)
 }
 
-# The mixture-cure Stan `_lpmf`, templated for the death (and, if two-outcome,
-# recovery) family. Placeholders: @DID@/@RDID@ dist ids, @DB@/@RB@ params,
-# @PID@ primary id.
-.cure_lpmf_body <- function(use_recovery) {
-  if (use_recovery) {
-    "
-    if (outcome == 1) {
-      return log(cfr) + primarycensored_lpmf(
-          y | @DID@, {@DB@}, pwindow, y + swindow, 0.0, positive_infinity(),
-          @PID@, primary_params);
-    } else if (outcome == 2) {
-      return log1m(cfr) + primarycensored_lpmf(
-          y | @RDID@, {@RB@}, pwindow, y + swindow, 0.0, positive_infinity(),
-          @PID@, primary_params);
-    } else if (outcome == 3) {
-      return log1m(cfr);
-    } else {
-      real fbar_d = primarycensored_cdf(y | @DID@, {@DB@}, pwindow, 0.0,
-          positive_infinity(), @PID@, primary_params);
-      real fbar_r = primarycensored_cdf(y | @RDID@, {@RB@}, pwindow, 0.0,
-          positive_infinity(), @PID@, primary_params);
-      return log_sum_exp(log(cfr) + log1m(fbar_d), log1m(cfr) + log1m(fbar_r));
-    }"
-  } else {
-    "
-    if (outcome == 1) {
-      return log(cfr) + primarycensored_lpmf(
-          y | @DID@, {@DB@}, pwindow, y + swindow, 0.0, positive_infinity(),
-          @PID@, primary_params);
-    } else if (outcome == 3) {
-      return log1m(cfr);
-    } else {
-      real fbar = primarycensored_cdf(y | @DID@, {@DB@}, pwindow, 0.0,
-          positive_infinity(), @PID@, primary_params);
-      return log1m(cfr * fbar);
-    }"
+# Fill a `<<hole>>` template from inst/stan with a named list of replacements.
+.fill_stan_template <- function(file, holes) {
+  path <- system.file("stan", file, package = "cfrnow")
+  code <- paste(readLines(path), collapse = "\n")
+  for (nm in names(holes)) {
+    code <- gsub(paste0("<<", nm, ">>"), holes[[nm]], code, fixed = TRUE)
   }
+  code
+}
+
+# Template holes for the recovery half of a two-outcome fit: its own family's
+# parameter declarations, distribution id, and native reparameterisation
+# (r-prefixed to match the recovery dpars rmu, rsigma / rshape).
+.recovery_holes <- function(family, recovery_family, recovery_dpars) {
+  rfam <- recovery_family %||% family
+  reparam <- .family_stan_param(rfam$family)
+  for (dp in rfam$dpars) {
+    reparam <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), reparam)
+  }
+  rid <- primarycensored::pcd_stan_dist_id(rfam$family, type = "delay")
+  list(
+    recovery_pars = toString(paste0("real ", recovery_dpars)),
+    recovery_id = rid,
+    recovery_reparam = reparam
+  )
 }
 
 #' @method epidist_stancode epidist_cure_model
 #' @export
 epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
   family_name <- sub("^cfrnow_", "", family$name)
-  dist_id <- primarycensored::pcd_stan_dist_id(family_name, type = "delay")
-  primary_id <- primarycensored::pcd_stan_dist_id("uniform", type = "primary")
   cfr_pos <- match("cfr", family$dpars)
   delay_dpars <- family$dpars[seq_len(cfr_pos - 1)]
   use_recovery <- cfr_pos < length(family$dpars)
 
-  # death side: declarations and the family's Stan reparameterisation
-  da <- toString(paste0("real ", delay_dpars))
-  db <- family$param
-  # recovery side: its own family's dist id and reparameterisation, r-prefixed
-  rdid <- dist_id
-  ra <- rb <- ""
+  holes <- list(
+    family = family_name,
+    death_pars = toString(paste0("real ", delay_dpars)),
+    death_id = primarycensored::pcd_stan_dist_id(family_name, type = "delay"),
+    death_reparam = family$param,
+    primary_id = primarycensored::pcd_stan_dist_id("uniform", type = "primary")
+  )
+  template <- "cure_lpmf_death.stan"
   if (use_recovery) {
-    rdpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
-    rfam <- attr(data, "recovery_family")
-    if (is.null(rfam)) rfam <- family
-    rdid <- primarycensored::pcd_stan_dist_id(rfam$family, type = "delay")
-    rb <- .family_stan_param(rfam$family)
-    for (dp in rfam$dpars) {
-      rb <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), rb)
-    }
-    ra <- toString(paste0("real ", rdpars))
+    recovery_dpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
+    holes <- c(holes, .recovery_holes(family, attr(data, "recovery_family"),
+                                      recovery_dpars))
+    template <- "cure_lpmf_two_outcome.stan"
   }
-
-  sig_tail <- paste("data real pwindow, data real swindow,",
-                    "array[] real primary_params")
-  sig <- if (use_recovery) {
-    sprintf("data int y, %s, real cfr, %s, data real outcome, %s",
-            da, ra, sig_tail)
-  } else {
-    sprintf("data int y, %s, real cfr, data real outcome, %s", da, sig_tail)
-  }
-  tmpl <- sprintf("\n  real cfrnow_%s_lpmf(%s) {%s\n  }",
-                  family_name, sig, .cure_lpmf_body(use_recovery))
-  subs <- list(c("@RDID@", rdid), c("@DID@", dist_id), c("@PID@", primary_id),
-               c("@DB@", db), c("@RB@", rb))
-  for (r in subs) {
-    tmpl <- gsub(r[1], r[2], tmpl, fixed = TRUE)
-  }
+  lpmf <- .fill_stan_template(template, holes)
 
   brms::stanvar(scode = primarycensored::pcd_load_stan_functions(),
                 block = "functions") +
-    brms::stanvar(scode = tmpl, block = "functions") +
+    brms::stanvar(scode = lpmf, block = "functions") +
     brms::stanvar(scode = "array[0] real primary_params;", block = "parameters")
 }
