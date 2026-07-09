@@ -84,13 +84,29 @@ early in an outbreak, when the estimate is prior-driven.
 ## Covariates and time-varying CFR
 
 Because the model is fitted through `epidist`, a `brms::bf()` puts a formula on
-`cfr` (or on the delay location `mu`). This is how you stratify or, with a smooth
-on time, let the CFR vary:
+`cfr` (or on the delay location `mu`). Add a covariate column to the prepared
+data and stratify the CFR by it. Here we build two groups with different true
+CFRs and recover the difference:
 
 ```{r formula, eval = FALSE}
-fit_cfr(d, delay = onset_to_death, formula = brms::bf(mu ~ 1, cfr ~ age_group))  # by covariate
-fit_cfr(d, delay = onset_to_death, formula = brms::bf(mu ~ 1, cfr ~ s(week)))    # time-varying
+grp <- function(n, cfr, label) {
+  d <- as_epidist_cure_model(prepare_cfr_data(
+    simulate_linelist(n = n, cfr = cfr, delay = LogNormal(mean = 12.75, sd = 7)),
+    obs_time = NULL
+  ))
+  d$group <- label
+  d
+}
+grouped <- as_epidist_cure_model(rbind(grp(800, 0.2, "low"),
+                                       grp(800, 0.6, "high")))
+
+fit <- fit_cfr(grouped, delay = onset_to_death,
+               formula = brms::bf(mu ~ 1, cfr ~ group))
+brms::fixef(fit)   # the cfr_grouplow coefficient is negative (low group < high)
 ```
+
+The same works with a smooth on time (`cfr ~ s(week)`, needing a `week` column)
+for a time-varying CFR.
 
 ## Delay family and fixing the delay
 
