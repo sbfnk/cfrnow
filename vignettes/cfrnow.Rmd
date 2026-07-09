@@ -26,7 +26,7 @@ is the Ghani/Nishiura estimator; here `F` is co-estimated and its uncertainty
 propagated.
 
 `cfrnow` is registered as an [epidist](https://epidist.epinowcast.org/) model
-type, so `cfr` and the delay both take `brms` formulas — that is how you put
+type, so `cfr` and the delay both take `brms` formulas. That is how you put
 covariates, or a smooth time effect, on the CFR.
 
 ```{r setup}
@@ -78,8 +78,8 @@ summary(fit)
 
 The corrected `cfr` sits above the naive ratio and, with enough resolved deaths,
 covers the true 0.55. `summary()` also carries a `cfr_low_information` attribute,
-`TRUE` when the CFR posterior has barely moved from its prior — expected very
-early in an outbreak, when the estimate is prior-driven.
+`TRUE` when the CFR posterior has barely moved from its prior, which is expected
+very early in an outbreak, when the estimate is prior-driven.
 
 ## Covariates and time-varying CFR
 
@@ -135,7 +135,7 @@ fit_cfr(d, delay = onset_to_death,
 
 This sharpens `cfr` when discharge recording is reliable, but an actually-recovered
 case whose recovery is *unrecorded* stays censored and is pushed toward the fatal
-branch over time, biasing `cfr` up — so without a `recovery_delay` recoveries are
+branch over time, biasing `cfr` up. So without a `recovery_delay`, recoveries are
 treated as untimed resolutions (the death-only default), which is safer where
 discharge data are patchy.
 

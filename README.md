@@ -14,8 +14,8 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 Real-time case fatality ratio (CFR) estimation from line-list data,
 using a Bayesian mixture-cure survival model. `cfrnow` is registered as
 an [epidist](https://epidist.epinowcast.org/) model type, so the CFR and
-the onset-to-death delay both take `brms` formulas — put covariates (or
-a time-varying effect) on either.
+the onset-to-death delay both take `brms` formulas. You can put
+covariates (or a time-varying effect) on either.
 
 ## Why
 
@@ -75,9 +75,9 @@ summary(fit)
 #> 3   delay_sd  7.100  6.200  7.000  8.200 1.000     3000
 ```
 
-Swap the family, fix the delay, add recovery timing, or — because the
-model is fitted through `epidist` — put covariates (or a smooth on time)
-on the CFR via a `formula`:
+Swap the family, fix the delay, or add recovery timing. And because the
+model is fitted through `epidist`, you can put covariates (or a smooth
+on time) on the CFR via a `formula`:
 
 ``` r
 fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))   # gamma
@@ -97,7 +97,7 @@ censoring, and a `recovery_date` column switches on the two-outcome fit
 that also times recoveries. `summary()` reports `rhat`/`ess_bulk` (and
 `recovery_mean`/`_sd` when recoveries are used) and flags
 `cfr_low_information` when the CFR posterior has barely moved from its
-prior — expected early on, when the estimate is prior-driven.
+prior, which is expected early on, when the estimate is prior-driven.
 
 ## Assumptions and caveats
 
@@ -106,15 +106,15 @@ these before quoting a number:
 
 - **Complete death ascertainment.** A death that never reaches the line
   list (say a community death outside a treatment centre) is treated as
-  a survivor and biases the CFR down — the biggest threat where
+  a survivor and biases the CFR down. This is the biggest threat where
   ascertainment is ETC-centred.
 - **Use the death notification date** in `death_date`, not the true date
   of death: a case counts as a death once its `death_date` is on or
   before the cut-off. If notification lags, this lets the censoring
-  absorb the delay and keeps `cfr` correct — but the delay the model
-  then works with is onset-to-*notification*, so read
-  `delay_mean`/`delay_sd` (and any biological delay prior) with that in
-  mind. With no notification lag, plain death dates are fine.
+  absorb the delay and keeps `cfr` correct, but the delay the model then
+  works with is onset-to-*notification*, so read `delay_mean`/`delay_sd`
+  (and any biological delay prior) with that in mind. With no
+  notification lag, plain death dates are fine.
 - **Stationary delay and homogeneous CFR** unless you model otherwise. A
   single delay and CFR over the whole outbreak; put a formula on `cfr`
   (e.g. a smooth on time) to relax the homogeneity assumption.
