@@ -17,7 +17,7 @@ fit_cfr(
 \item{data}{Output of \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}, or an \code{epidist_cure_model} /
 data frame with \code{y}, \code{outcome}, \code{pwindow}, \code{swindow}.}
 
-\item{delay}{Onset-to-death delay as a \link{distspec} distribution
+\item{delay}{Onset-to-death delay as a \pkg{distspec} distribution
 (\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}) whose native parameters
 are fixed numbers or \code{Normal()} priors.}
 
@@ -40,7 +40,7 @@ Estimates a real-time case fatality ratio from line-list data. Each case is
 fatal with probability \code{cfr} and, when fatal, dies at an onset-to-death
 \code{delay}; cases still alive at the cut-off are right-censored, correcting the
 downward bias of the naive deaths / cases ratio. The delay and the CFR prior
-are given as \link{distspec} distributions.
+are given as \pkg{distspec} distributions.
 }
 \details{
 The delay's native parameters may each be a fixed number (held fixed; fixing
@@ -61,8 +61,15 @@ recoveries.
 ll <- simulate_linelist(n = 500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
 d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 5)
 otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
+
+# co-estimated delay
 fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1), backend = "cmdstanr")
 summary(fit)
+
+# fixed delay (Ghani/Nishiura), a gamma family, and a CFR covariate
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))
+fit_cfr(d, delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08)))
+fit_cfr(d, delay = otd, formula = brms::bf(mu ~ 1, cfr ~ group))
 }
 }
 \seealso{

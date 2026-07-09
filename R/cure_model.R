@@ -19,6 +19,7 @@
 #' families are `lognormal()` and `Gamma()`.
 #'
 #' @name cfrnow-cure-model
+#' @keywords internal
 NULL
 
 # Outcome codes carried in the `outcome` vreal (match cfrnow's likelihood):

@@ -23,3 +23,4 @@ The delay distribution's location is \code{mu} (as \code{epidist} expects); the 
 probability \code{cfr} is an additional dpar with a logit link. Supported delay
 families are \code{lognormal()} and \code{Gamma()}.
 }
+\keyword{internal}
