@@ -4,7 +4,13 @@
 \alias{prepare_cfr_data}
 \title{Build model inputs from a line list}
 \usage{
-prepare_cfr_data(linelist, obs_time = NULL, t0 = NULL, max_delay = 60)
+prepare_cfr_data(
+  linelist,
+  obs_time = NULL,
+  covariates = character(),
+  t0 = NULL,
+  max_delay = 60
+)
 }
 \arguments{
 \item{linelist}{A data frame with an \code{onset_date} column, an optional
@@ -22,6 +28,11 @@ before \code{obs_time} is resolved; one still alive and unresolved is
 right-censored; and a death dated after \code{obs_time} is treated as
 not-yet-known (right-censored).}
 
+\item{covariates}{Character vector of \code{linelist} column names to carry
+through to the per-case model rows, so they can be used in a \code{cfr ~ ...}
+formula. The onset date is always carried as \code{onset}; for a time-varying
+CFR derive a time term from it (e.g. \code{week}) and pass \code{cfr ~ s(week)}.}
+
 \item{t0}{Optional time origin (\code{Date}). Defaults to
 \code{min(onset) - max_delay}.}
 
@@ -34,10 +45,13 @@ avoid discarding genuine long-delay deaths (which would bias the delay
 short). It also sets the default origin, \code{t0 = min(onset) - max_delay}.}
 }
 \value{
-A \code{cfrnow_data} list with the Stan inputs (\code{n_death}, \code{death_delay},
-\code{death_width}, \code{n_recovery}, \code{recovery_delay}, \code{recovery_width}, \code{n_cens},
-\code{censor_time}, \code{censor_width}, \code{n_resolved}) plus \code{n_cases}, \code{n_deaths},
-\code{n_recoveries}, \code{t0} and \code{obs_time}.
+A \code{cfrnow_data} list with the aggregated model inputs (\code{n_death},
+\code{death_delay}, \code{death_width}, \code{n_recovery}, \code{recovery_delay},
+\code{recovery_width}, \code{n_cens}, \code{censor_time}, \code{censor_width}, \code{n_resolved},
+\code{n_cases}, \code{n_deaths}, \code{n_recoveries}, \code{t0}, \code{obs_time}) and a \code{cases}
+data frame with one row per kept case (\code{y}, \code{outcome}, \code{pwindow},
+\code{swindow}, \code{onset} and any requested \code{covariates}), which
+\code{\link[=as_epidist_cure_model]{as_epidist_cure_model()}} turns into the model frame.
 }
 \description{
 Classifies each case at an observation cut-off into an observed death (with

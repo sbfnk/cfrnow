@@ -5,12 +5,13 @@ Authors@R:
     person("Sebastian", "Funk", , "sebastian.funk@lshtm.ac.uk",
            role = c("aut", "cre"))
 Description: Estimates a real-time case fatality ratio (CFR) from line-list data
-    using a Bayesian mixture-cure survival model. Each case is fatal with
-    probability equal to the CFR and, when fatal, dies at an interval-censored
-    onset-to-death delay; cases still alive at the observation cut-off are
-    right-censored, which corrects the downward bias of the naive deaths /
-    cases ratio in real time. The onset-to-death delay is co-estimated using
-    the primarycensored analytical censored-distribution machinery.
+    using a Bayesian mixture-cure survival model, registered as an 'epidist'
+    model type so the CFR and the onset-to-death delay both take 'brms'
+    formulas. Each case is fatal with probability equal to the CFR and, when
+    fatal, dies at an interval-censored onset-to-death delay; cases still alive
+    at the observation cut-off are right-censored, which corrects the downward
+    bias of the naive deaths / cases ratio in real time. The delay is
+    co-estimated using the 'primarycensored' censored-distribution machinery.
 License: MIT + file LICENSE
 URL: https://sbfnk.github.io/cfrnow/, https://github.com/sbfnk/cfrnow
 BugReports: https://github.com/sbfnk/cfrnow/issues
@@ -19,19 +20,22 @@ Roxygen: list(markdown = TRUE)
 Depends:
     distspec
 Imports:
-    cmdstanr,
+    brms,
+    checkmate,
+    epidist,
     posterior,
     primarycensored,
     stats
 Suggests:
+    cmdstanr,
     knitr,
     rmarkdown,
-    survival,
     testthat (>= 3.0.0)
 VignetteBuilder:
     knitr
 Remotes:
-    epiforecasts/distspec
+    epiforecasts/distspec,
+    epinowcast/epidist
 Additional_repositories:
     https://stan-dev.r-universe.dev
 Config/testthat/edition: 3
