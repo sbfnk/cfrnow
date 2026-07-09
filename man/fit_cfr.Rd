@@ -6,10 +6,10 @@
 \usage{
 fit_cfr(
   data,
+  delay = LogNormal(meanlog = Normal(2, 1), sdlog = Normal(0.5, 0.3)),
+  cfr_prior = Beta(1, 1),
+  recovery_delay = NULL,
   formula = mu ~ 1,
-  family = brms::lognormal(),
-  recovery_family = family,
-  prior = cfr_default_prior(),
   ...
 )
 }
@@ -17,17 +17,17 @@ fit_cfr(
 \item{data}{Output of \code{\link[=prepare_cfr_data]{prepare_cfr_data()}}, or an \code{epidist_cure_model} /
 data frame with \code{y}, \code{outcome}, \code{pwindow}, \code{swindow}.}
 
-\item{formula}{A \code{stats::formula} or \code{brms::bf()}. A formula for \code{mu} (the
-delay location) is required; add a \code{cfr ~ ...} part to model the CFR.
-Defaults to \code{mu ~ 1}.}
+\item{delay}{Onset-to-death delay as a \link{distspec} distribution
+(\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}) whose native parameters
+are fixed numbers or \code{Normal()} priors.}
 
-\item{family}{The delay family: \code{\link[brms:lognormal]{brms::lognormal()}} (default) or
-\code{\link[brms:Gamma]{brms::Gamma()}}.}
+\item{cfr_prior}{CFR prior as a \code{\link[distspec:Beta]{distspec::Beta()}}. Defaults to \code{Beta(1, 1)}.}
 
-\item{recovery_family}{Family for the onset-to-recovery delay in a
-two-outcome fit; defaults to \code{family}. Ignored without recovery data.}
+\item{recovery_delay}{Optional onset-to-recovery delay (same form as \code{delay})
+for the two-outcome fit; may use a different family from \code{delay}.}
 
-\item{prior}{\code{brms} priors. Defaults to \code{\link[=cfr_default_prior]{cfr_default_prior()}}.}
+\item{formula}{A \code{brms} formula for the delay location \code{mu} and, optionally,
+the CFR (\code{cfr ~ ...}). Defaults to \code{mu ~ 1}.}
 
 \item{...}{Passed to \code{\link[epidist:epidist]{epidist::epidist()}} and on to \code{\link[brms:brm]{brms::brm()}}
 (e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}
@@ -36,31 +36,37 @@ two-outcome fit; defaults to \code{family}. Ignored without recovery data.}
 A \code{brmsfit} with class \code{cfrnow_fit}; summarise with \code{\link[=summary]{summary()}}.
 }
 \description{
-A thin wrapper over \code{\link[epidist:epidist]{epidist::epidist()}} for the cfrnow cure model. Because
-the model is an \code{epidist} subclass, both the CFR and the delay accept \code{brms}
-formulas: pass a \code{brms::bf()} to put covariates on either, e.g.
-\code{fit_cfr(d, bf(mu ~ 1, cfr ~ age))}.
+Estimates a real-time case fatality ratio from line-list data. Each case is
+fatal with probability \code{cfr} and, when fatal, dies at an onset-to-death
+\code{delay}; cases still alive at the cut-off are right-censored, correcting the
+downward bias of the naive deaths / cases ratio. The delay and the CFR prior
+are given as \link{distspec} distributions.
 }
 \details{
-Define the CFR prior with \code{\link[=cfr_prior]{cfr_prior()}} (in CFR units) or any \code{brms} prior on
-the logit-scale \code{cfr} intercept. Add \code{\link[=fix_delay]{fix_delay()}} to \code{prior} to hold the
-delay fixed. When the data carry recoveries, a two-outcome fit also estimates
-an onset-to-recovery delay, whose family is \code{recovery_family} (defaulting to
-\code{family}).
+The delay's native parameters may each be a fixed number (held fixed; fixing
+the whole delay gives the Ghani/Nishiura estimator) or a \code{Normal()} prior
+(co-estimated). The family (\code{LogNormal()} or \code{Gamma()}) sets the delay
+distribution. \code{cfr_prior} is a \code{Beta()}; it matters because the CFR is weakly
+identified early on (\code{Beta(1, 1)} is uniform, \code{Beta(1, 9)} favours a low CFR,
+\code{Beta(6.6, 13.4)} suits a high-fatality pathogen).
+
+The model is fitted through \code{\link[epidist:epidist]{epidist::epidist()}}, so covariates (or a smooth
+time effect) can be put on the CFR or the delay through \code{formula}, e.g.
+\code{formula = brms::bf(mu ~ 1, cfr ~ age)}. When the line list carries recovery
+dates, pass a \code{recovery_delay} to fit the two-outcome model that also times
+recoveries.
 }
 \examples{
 \dontrun{
 ll <- simulate_linelist(n = 500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
 d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 5)
-fit <- fit_cfr(d, prior = cfr_prior(0.4, 0.15), backend = "cmdstanr")
+otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
+fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1), backend = "cmdstanr")
 summary(fit)
 }
 }
 \seealso{
 Other fit:
-\code{\link[=cfr_default_prior]{cfr_default_prior()}},
-\code{\link[=cfr_prior]{cfr_prior()}},
-\code{\link[=fix_delay]{fix_delay()}},
 \code{\link[=summary.cfrnow_fit]{summary.cfrnow_fit()}}
 }
 \concept{fit}

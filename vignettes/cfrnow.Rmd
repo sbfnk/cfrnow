@@ -64,13 +64,15 @@ round(naive, 3)  # the downward-biased naive ratio
 
 ## Fitting
 
-`fit_cfr()` is a thin wrapper over `epidist::epidist()`. With no formula it fits a
-single CFR and co-estimates the onset-to-death delay; the default prior is a
-weakly-informative logit-normal on the CFR. `summary()` reports the corrected CFR
-and the delay moments (days) with convergence diagnostics.
+Supply the onset-to-death `delay` and a `cfr_prior` as `distspec` distributions.
+A native delay parameter can be a `Normal()` prior (co-estimated) or a fixed
+number; the `cfr_prior` is a `Beta()`, which matters because the CFR is weakly
+identified early on. `summary()` reports the corrected CFR and the delay moments
+(days) with convergence diagnostics.
 
 ```{r fit, eval = FALSE}
-fit <- fit_cfr(d, backend = "cmdstanr")
+onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
+fit <- fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(6.6, 13.4))
 summary(fit)
 ```
 
@@ -81,36 +83,45 @@ early in an outbreak, when the estimate is prior-driven.
 
 ## Covariates and time-varying CFR
 
-Because the model is an `epidist` subclass, a `brms::bf()` puts a formula on `cfr`
-(or on the delay location `mu`). This is how you stratify or, with a smooth on
-time, let the CFR vary:
+Because the model is fitted through `epidist`, a `brms::bf()` puts a formula on
+`cfr` (or on the delay location `mu`). This is how you stratify or, with a smooth
+on time, let the CFR vary:
 
 ```{r formula, eval = FALSE}
-fit_cfr(d, formula = brms::bf(mu ~ 1, cfr ~ age_group))  # CFR by covariate
-fit_cfr(d, formula = brms::bf(mu ~ 1, cfr ~ s(week)))    # time-varying CFR
+fit_cfr(d, delay = onset_to_death, formula = brms::bf(mu ~ 1, cfr ~ age_group))  # by covariate
+fit_cfr(d, delay = onset_to_death, formula = brms::bf(mu ~ 1, cfr ~ s(week)))    # time-varying
 ```
 
 ## Delay family and fixing the delay
 
-The delay `family` is `lognormal()` (default) or `Gamma()`; they differ in tail
-weight, which sets how quickly a recent case counts as "probably cured". The
-family is not identifiable from sparse data, so check sensitivity by refitting
-the other. To hold the delay fixed (the Ghani/Nishiura estimator) supply a tight
-prior on `mu`/`sigma` via the `prior` argument.
+The delay is `LogNormal()` or `Gamma()`; they differ in tail weight, which sets
+how quickly a recent case counts as "probably cured". The family is not
+identifiable from sparse data, so check sensitivity by refitting the other. Give
+a native parameter a fixed number instead of a `Normal()` prior to hold it fixed;
+fixing the whole delay gives the Ghani/Nishiura estimator.
 
 ```{r family, eval = FALSE}
-fit_cfr(d, family = stats::Gamma(link = "log"))          # gamma delay
+fit_cfr(d, delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08)))  # gamma
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                   # fixed delay
 ```
 
 ## Recovery timing
 
-If the line list has a `recovery_date` column, `prepare_cfr_data()` times those
-recoveries and `fit_cfr()` switches to a two-outcome mixture-cure model that also
-estimates the onset-to-recovery delay (reported as `recovery_mean`/`recovery_sd`
-by `summary()`). This sharpens `cfr` when discharge recording is reliable, but an
-actually-recovered case whose recovery is *unrecorded* stays censored and is
-pushed toward the fatal branch over time, biasing `cfr` up — so prefer the
-death-only default where discharge data are patchy.
+If the line list has a `recovery_date` column and you pass a `recovery_delay`,
+`fit_cfr()` fits the two-outcome mixture-cure model that also times recoveries
+(reported as `recovery_mean`/`recovery_sd` by `summary()`); the recovery delay
+may use a different family from the death delay.
+
+```{r recovery-fit, eval = FALSE}
+fit_cfr(d, delay = onset_to_death,
+        recovery_delay = LogNormal(meanlog = Normal(2.9, 0.3), sdlog = Normal(0.5, 0.2)))
+```
+
+This sharpens `cfr` when discharge recording is reliable, but an actually-recovered
+case whose recovery is *unrecorded* stays censored and is pushed toward the fatal
+branch over time, biasing `cfr` up — so without a `recovery_delay` recoveries are
+treated as untimed resolutions (the death-only default), which is safer where
+discharge data are patchy.
 
 ## Caveats
 

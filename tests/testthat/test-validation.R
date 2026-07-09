@@ -39,29 +39,29 @@ test_that("naive_cfr is deaths/cases, and NA when there are no cases", {
 
 test_that(".cfr_prior_sd reads a normal cfr prior and is NA otherwise", {
   expect_true(is.na(.cfr_prior_sd(brms::set_prior("beta(1, 1)", class = "b"))))
-  s <- .cfr_prior_sd(cfr_default_prior())
+  s <- .cfr_prior_sd(.cfr_prior_to_brms(Beta(1, 1)))
   expect_true(is.finite(s) && s > 0 && s < 0.5)       # (0,1)-scale prior sd
 })
 
-test_that("cfr_prior moment-matches the CFR-scale mean and sd", {
-  p <- cfr_prior(mean = 0.3, sd = 0.1)
-  expect_equal(p$dpar, "cfr")
-  expect_equal(.cfr_prior_sd(p), 0.1, tolerance = 0.02)   # induced sd, CFR scale
-  m <- regmatches(p$prior,
-                  regexec("normal\\(([^,]+), ([^)]+)\\)", p$prior))[[1]]
-  set.seed(1)
-  induced_mean <- mean(stats::plogis(stats::rnorm(1e5, as.numeric(m[2]),
-                                                  as.numeric(m[3]))))
-  expect_equal(induced_mean, 0.3, tolerance = 0.02)
+test_that(".delay_family_prior maps fixed params to constant priors", {
+  p <- .delay_family_prior(LogNormal(meanlog = 2.41, sdlog = 0.51))$prior
+  expect_true(all(grepl("^constant\\(", p$prior)))
+  loc <- as.numeric(sub("constant\\(([^)]+)\\)", "\\1", p$prior[p$dpar == ""]))
+  expect_equal(loc, 2.41, tolerance = 1e-6)          # meanlog is identity-linked
 })
 
-test_that("fix_delay returns constant priors for the delay parameters", {
-  p <- fix_delay(brms::lognormal(), mean = 12.75, sd = 7)
-  expect_true(all(grepl("^constant\\(", p$prior)))
-  expect_equal(sum(p$class == "Intercept"), 2L)
-  expect_true(any(p$dpar == "sigma"))
-  loc <- as.numeric(sub("constant\\(([^)]+)\\)", "\\1", p$prior[p$dpar == ""]))
-  expect_equal(loc, log(12.75) - log1p((7 / 12.75)^2) / 2, tolerance = 1e-6)
+test_that(".delay_family_prior maps Normal() params to normal priors and family", {
+  dd <- .delay_family_prior(LogNormal(meanlog = Normal(2.4, 0.2),
+                                      sdlog = Normal(0.5, 0.15)))
+  expect_equal(dd$family$family, "lognormal")
+  expect_true(any(grepl("normal\\(2.4", dd$prior$prior)))
+  expect_error(.delay_family_prior(5), "distspec")
+})
+
+test_that(".cfr_prior_to_brms turns a Beta into a logit-normal of matching sd", {
+  p <- .cfr_prior_to_brms(Beta(1, 1))                # uniform: sd = 1/sqrt(12)
+  expect_equal(.cfr_prior_sd(p), 1 / sqrt(12), tolerance = 0.03)
+  expect_error(.cfr_prior_to_brms(Gamma(1, 1)), "Beta")
 })
 
 test_that("simulate_linelist requires a delay", {

@@ -52,13 +52,18 @@ d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"))
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 ```
 
-`fit_cfr()` is a thin wrapper over `epidist::epidist()`. It takes the prepared
-data, a `brms` formula (default `mu ~ 1` for the delay location), the delay
-`family` (`lognormal()` or `Gamma()`), and `brms` priors — the default is a
-weakly-informative logit-normal on the CFR:
+Supply the onset-to-death `delay` and a `cfr_prior` as
+[distspec](https://epiforecasts.io/distspec/) distributions. A native delay
+parameter can be a `Normal()` prior (co-estimated) or a fixed number (held
+fixed; fixing the whole delay gives the Ghani/Nishiura estimator). The
+`cfr_prior` is a `Beta()` and matters because the CFR is weakly identified early
+on: `Beta(1, 1)` is uniform, `Beta(1, 9)` favours a low CFR, and `Beta(6.6,
+13.4)` (mean 0.33) suits a high-fatality pathogen. Here we use the BDBV/Isiro
+onset-to-death prior:
 
 ```{r fit, eval = FALSE}
-fit <- fit_cfr(d, backend = "cmdstanr")
+onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
+fit <- fit_cfr(d, delay = onset_to_death, cfr_prior = Beta(1, 1))
 summary(fit)
 #>     quantity   mean   q2.5    q50  q97.5  rhat ess_bulk
 #> 1        cfr  0.560  0.505  0.560  0.615 1.001     3100
@@ -66,20 +71,21 @@ summary(fit)
 #> 3   delay_sd  7.100  6.200  7.000  8.200 1.000     3000
 ```
 
-Because the model is an `epidist` subclass, covariates go straight on the CFR (or
-the delay) through the formula — this is how you get a stratified or, with a
-smooth term on time, a time-varying CFR:
+Swap the family, fix the delay, add recovery timing, or — because the model is
+fitted through `epidist` — put covariates (or a smooth on time) on the CFR via a
+`formula`:
 
 ```{r variants, eval = FALSE}
-fit_cfr(d, family = stats::Gamma(link = "log"))          # gamma delay
-fit_cfr(d, formula = brms::bf(mu ~ 1, cfr ~ age_group))  # CFR by covariate
-fit_cfr(d, formula = brms::bf(mu ~ 1, cfr ~ s(week)))    # time-varying CFR
+fit_cfr(d, delay = Gamma(shape = Normal(3, 1), rate = Normal(0.25, 0.1)))   # gamma
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                 # fixed-F
+fit_cfr(d, delay = onset_to_death,
+        recovery_delay = LogNormal(Normal(2.9, 0.3), Normal(0.5, 0.2)))     # two-outcome
+fit_cfr(d, delay = onset_to_death,
+        formula = brms::bf(mu ~ 1, cfr ~ age_group))                        # CFR by covariate
 ```
 
 Pass `obs_time = NULL` to `prepare_cfr_data()` for a retrospective fit (it reduces
-to the naive ratio with the delay as a nuisance). To estimate the delay from a
-line list first, use [epidist](https://epidist.epinowcast.org/) directly and set
-an informative prior on `mu`/`sigma`.
+to the naive ratio with the delay as a nuisance).
 
 Your line list needs `onset_date` and `death_date` (`NA` for cases that have not
 died). Optional `onset_lower`/`onset_upper` widen the onset censoring, and a

@@ -7,35 +7,34 @@ naive_cfr <- function(n_deaths, n_cases) {
   if (n_cases == 0) NA_real_ else n_deaths / n_cases
 }
 
-#' Posterior draws of the CFR and the onset-to-death delay moments
+#' Mean and sd (days) of a delay from its brms native parameters
 #'
-#' Transforms the raw `brms` draws into the reported quantities: `cfr` (from the
-#' logit-scale `cfr` intercept) and the delay `mean`/`sd` in days, computed from
-#' the family's native parameters. Handles the lognormal and gamma families.
-#' @param object A `cfrnow_fit`.
-#' @return A `draws_df` with columns `cfr`, `delay_mean`, `delay_sd`.
+#' `loc_var` is the location intercept and `scale_var` the second parameter's
+#' intercept; the second parameter is log-linked. Handles lognormal (loc is
+#' meanlog) and gamma (loc is log-mean, second parameter is shape).
 #' @noRd
 .delay_moments <- function(dr, loc_var, scale_var, family) {
   loc <- dr[[loc_var]]
-  sc <- exp(dr[[scale_var]])                           # log link on the 2nd par
-  if (family == "lognormal") {                         # loc = meanlog (identity)
-    mean <- exp(loc + sc^2 / 2)
-    list(mean = mean, sd = sqrt(exp(sc^2) - 1) * mean)
-  } else {                                             # gamma: loc = log-mean
-    mean <- exp(loc)
-    list(mean = mean, sd = mean / sqrt(sc))            # sc = shape
+  sc <- exp(dr[[scale_var]])
+  if (family == "lognormal") {
+    dmean <- exp(loc + sc^2 / 2)
+    list(mean = dmean, sd = sqrt(exp(sc^2) - 1) * dmean)
+  } else {
+    dmean <- exp(loc)
+    list(mean = dmean, sd = dmean / sqrt(sc))
   }
 }
 
 .cfr_quantities <- function(object) {
   dr <- posterior::as_draws_df(object)
   if (!"b_cfr_Intercept" %in% posterior::variables(dr)) {
-    stop("summary() supports intercept-only `cfr` fits; for `cfr ~ covariates` ",
+    stop("summary() supports intercept-only `cfr` fits; for a `cfr ~ x` fit ",
          "use brms::posterior_epred() on the fit directly.", call. = FALSE)
   }
   fam <- object$cfrnow$family
   scale2 <- if (fam == "lognormal") "sigma" else "shape"
-  d <- .delay_moments(dr, "b_Intercept", paste0("b_", scale2, "_Intercept"), fam)
+  d <- .delay_moments(dr, "b_Intercept",
+                      paste0("b_", scale2, "_Intercept"), fam)
   res <- data.frame(cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
                     delay_mean = d$mean, delay_sd = d$sd)
   if (isTRUE(object$cfrnow$use_recovery)) {
@@ -46,7 +45,9 @@ naive_cfr <- function(n_deaths, n_cases) {
     res$recovery_mean <- r$mean
     res$recovery_sd <- r$sd
   }
-  res$.chain <- dr$.chain; res$.iteration <- dr$.iteration; res$.draw <- dr$.draw
+  res$.chain <- dr$.chain
+  res$.iteration <- dr$.iteration
+  res$.draw <- dr$.draw
   posterior::as_draws_df(res)
 }
 
@@ -78,10 +79,10 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   if (!inherits(object, "cfrnow_fit")) {
     stop("`object` must come from fit_cfr().", call. = FALSE)
   }
-  q <- .cfr_quantities(object)
+  qs <- .cfr_quantities(object)
   qcols <- paste0("q", probs * 100)
   sm <- posterior::summarise_draws(
-    q, mean = mean,
+    qs, mean = mean,
     stats::setNames(lapply(probs, function(p) {
       function(x) stats::quantile(x, p, names = FALSE)
     }), qcols),
@@ -90,15 +91,15 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   out <- as.data.frame(sm)
   names(out)[1] <- "quantity"
 
-  cfr_post_sd <- stats::sd(posterior::extract_variable(q, "cfr"))
+  cfr_post_sd <- stats::sd(posterior::extract_variable(qs, "cfr"))
+  prior_sd <- object$cfrnow$cfr_prior_sd
+  low_info <- !is.na(prior_sd) && cfr_post_sd > info_tol * prior_sd
   attr(out, "naive_cfr") <- naive_cfr(object$cfrnow$n_deaths,
                                       object$cfrnow$n_cases)
   attr(out, "n_cases") <- object$cfrnow$n_cases
   attr(out, "n_deaths") <- object$cfrnow$n_deaths
-  attr(out, "cfr_prior_sd") <- object$cfrnow$cfr_prior_sd
-  attr(out, "cfr_low_information") <-
-    !is.na(object$cfrnow$cfr_prior_sd) &&
-      cfr_post_sd > info_tol * object$cfrnow$cfr_prior_sd
+  attr(out, "cfr_prior_sd") <- prior_sd
+  attr(out, "cfr_low_information") <- low_info
   out
 }
 

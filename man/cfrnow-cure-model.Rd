@@ -13,12 +13,11 @@ the delay both take \code{brms} formulas, e.g.
 \code{epidist(data, bf(mu ~ 1, cfr ~ age), family = lognormal())}.
 }
 \details{
-When the line list carries recovery dates, \code{prepare_cfr_data()} times those
-recoveries and the fit becomes a two-outcome mixture-cure model that also uses
-onset-to-recovery timing: a non-fatal case recovers at a second delay, so a
+With a \code{recovery_delay}, the fit becomes a two-outcome mixture-cure model
+that also times recoveries: a non-fatal case recovers at a second delay, so a
 recovered case contributes \verb{(1 - cfr) f_R(r)} and an unresolved case
-\code{cfr (1 - F_D(t)) + (1 - cfr)(1 - F_R(t))}. The recovery delay shares the
-death delay's family.
+\code{cfr (1 - F_D(t)) + (1 - cfr)(1 - F_R(t))}. The recovery delay may use a
+different family from the death delay.
 
 The delay distribution's location is \code{mu} (as \code{epidist} expects); the cure
 probability \code{cfr} is an additional dpar with a logit link. Supported delay

@@ -8,12 +8,11 @@
 #' the delay both take `brms` formulas, e.g.
 #' `epidist(data, bf(mu ~ 1, cfr ~ age), family = lognormal())`.
 #'
-#' When the line list carries recovery dates, `prepare_cfr_data()` times those
-#' recoveries and the fit becomes a two-outcome mixture-cure model that also uses
-#' onset-to-recovery timing: a non-fatal case recovers at a second delay, so a
+#' With a `recovery_delay`, the fit becomes a two-outcome mixture-cure model
+#' that also times recoveries: a non-fatal case recovers at a second delay, so a
 #' recovered case contributes `(1 - cfr) f_R(r)` and an unresolved case
-#' `cfr (1 - F_D(t)) + (1 - cfr)(1 - F_R(t))`. The recovery delay shares the
-#' death delay's family.
+#' `cfr (1 - F_D(t)) + (1 - cfr)(1 - F_R(t))`. The recovery delay may use a
+#' different family from the death delay.
 #'
 #' The delay distribution's location is `mu` (as `epidist` expects); the cure
 #' probability `cfr` is an additional dpar with a logit link. Supported delay
@@ -52,12 +51,16 @@ as_epidist_cure_model <- function(data) {
       if (n > 0) {
         data.frame(y = as.integer(y), outcome = code, pwindow = width,
                    swindow = 1)
-      } else NULL
+      } else {
+        NULL
+      }
     }
     resolved <- if (data$n_resolved > 0) {
       data.frame(y = 0L, outcome = .CURE_RESOLVED, pwindow = 1,
                  swindow = 1)[rep(1, data$n_resolved), ]
-    } else NULL
+    } else {
+      NULL
+    }
     data <- rbind(
       rows(data$n_deaths, data$death_delay, .CURE_DEATH, data$death_width),
       rows(data$n_recovery, data$recovery_delay, .CURE_RECOVERY,
@@ -66,7 +69,7 @@ as_epidist_cure_model <- function(data) {
       rows(data$n_cens, data$censor_time, .CURE_CENSORED, data$censor_width)
     )
   }
-  stopifnot(all(c("y", "outcome", "pwindow", "swindow") %in% names(data)))
+  stopifnot(c("y", "outcome", "pwindow", "swindow") %in% names(data))
   data <- as.data.frame(data)
   class(data) <- c("epidist_cure_model", "data.frame")
   attr(data, "use_recovery") <- any(data$outcome == .CURE_RECOVERY)
@@ -76,12 +79,12 @@ as_epidist_cure_model <- function(data) {
 #' @method assert_epidist epidist_cure_model
 #' @export
 assert_epidist.epidist_cure_model <- function(data, ...) {
+  cols <- c("y", "outcome", "pwindow", "swindow")
+  codes <- c(.CURE_DEATH, .CURE_RECOVERY, .CURE_RESOLVED, .CURE_CENSORED)
   checkmate::assert_data_frame(data)
-  checkmate::assert_names(names(data),
-    must.include = c("y", "outcome", "pwindow", "swindow"))
+  checkmate::assert_names(names(data), must.include = cols)
   checkmate::assert_integerish(data$y)
-  checkmate::assert_subset(data$outcome,
-    c(.CURE_DEATH, .CURE_RECOVERY, .CURE_RESOLVED, .CURE_CENSORED))
+  checkmate::assert_subset(data$outcome, codes)
   invisible(TRUE)
 }
 
@@ -110,11 +113,11 @@ epidist_family_model.epidist_cure_model <- function(data, family, ...) {
   dpars <- c(family$dpars, "cfr")
   links <- c(.delay_links(family), "logit")
   if (isTRUE(attr(data, "use_recovery"))) {
-    rf <- attr(data, "recovery_family")
-    if (is.null(rf)) rf <- family
-    .assert_delay_family(rf, "recovery delay")
-    dpars <- c(dpars, paste0("r", rf$dpars))         # recovery: own family
-    links <- c(links, .delay_links(rf))
+    rfam <- attr(data, "recovery_family")
+    if (is.null(rfam)) rfam <- family
+    .assert_delay_family(rfam, "recovery delay")
+    dpars <- c(dpars, paste0("r", rfam$dpars))         # recovery: own family
+    links <- c(links, .delay_links(rfam))
   }
   brms::custom_family(
     paste0("cfrnow_", family$family),
@@ -149,38 +152,18 @@ epidist_model_prior.epidist_cure_model <- function(data, formula, ...) NULL
   code <- brms::make_stancode(y ~ 1, data = data.frame(y = c(1, 2)),
                               family = family_name)
   pat <- sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ([^)]+)\\)", family_name)
-  hits <- regmatches(code, gregexpr(pat, code))[[1]]
-  hit <- hits[grepl("mu", hits, fixed = TRUE)][1]
+  hits <- grep("mu", regmatches(code, gregexpr(pat, code))[[1]],
+               fixed = TRUE, value = TRUE)
   sub(")", "", sub(sprintf("target \\+= %s_(lpdf|lpmf)\\(Y \\| ", family_name),
-                   "", hit), fixed = TRUE)
+                   "", hits[1]), fixed = TRUE)
 }
 
-#' @method epidist_stancode epidist_cure_model
-#' @export
-epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
-  family_name <- sub("^cfrnow_", "", family$name)
-  dist_id <- primarycensored::pcd_stan_dist_id(family_name, type = "delay")
-  primary_id <- primarycensored::pcd_stan_dist_id("uniform", type = "primary")
-  cfr_pos <- match("cfr", family$dpars)
-  delay_dpars <- family$dpars[seq_len(cfr_pos - 1)]
-  use_recovery <- cfr_pos < length(family$dpars)
-
-  # death side: declarations and the family's Stan reparameterisation
-  DA <- toString(paste0("real ", delay_dpars))
-  DB <- family$param
-  # recovery side: its own family's dist id and reparameterisation, r-prefixed
-  rdid <- dist_id; RA <- RB <- ""
+# The mixture-cure Stan `_lpmf`, templated for the death (and, if two-outcome,
+# recovery) family. Placeholders: @DID@/@RDID@ dist ids, @DB@/@RB@ params,
+# @PID@ primary id.
+.cure_lpmf_body <- function(use_recovery) {
   if (use_recovery) {
-    rdpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
-    rf <- attr(data, "recovery_family")
-    if (is.null(rf)) rf <- family
-    rdid <- primarycensored::pcd_stan_dist_id(rf$family, type = "delay")
-    RB <- .family_stan_param(rf$family)
-    for (dp in rf$dpars) RB <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), RB)
-    RA <- toString(paste0("real ", rdpars))
-  }
-
-  body <- if (use_recovery) '
+    "
     if (outcome == 1) {
       return log(cfr) + primarycensored_lpmf(
           y | @DID@, {@DB@}, pwindow, y + swindow, 0.0, positive_infinity(),
@@ -197,7 +180,9 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
       real fbar_r = primarycensored_cdf(y | @RDID@, {@RB@}, pwindow, 0.0,
           positive_infinity(), @PID@, primary_params);
       return log_sum_exp(log(cfr) + log1m(fbar_d), log1m(cfr) + log1m(fbar_r));
-    }' else '
+    }"
+  } else {
+    "
     if (outcome == 1) {
       return log(cfr) + primarycensored_lpmf(
           y | @DID@, {@DB@}, pwindow, y + swindow, 0.0, positive_infinity(),
@@ -208,19 +193,51 @@ epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
       real fbar = primarycensored_cdf(y | @DID@, {@DB@}, pwindow, 0.0,
           positive_infinity(), @PID@, primary_params);
       return log1m(cfr * fbar);
-    }'
+    }"
+  }
+}
 
+#' @method epidist_stancode epidist_cure_model
+#' @export
+epidist_stancode.epidist_cure_model <- function(data, family, formula, ...) {
+  family_name <- sub("^cfrnow_", "", family$name)
+  dist_id <- primarycensored::pcd_stan_dist_id(family_name, type = "delay")
+  primary_id <- primarycensored::pcd_stan_dist_id("uniform", type = "primary")
+  cfr_pos <- match("cfr", family$dpars)
+  delay_dpars <- family$dpars[seq_len(cfr_pos - 1)]
+  use_recovery <- cfr_pos < length(family$dpars)
+
+  # death side: declarations and the family's Stan reparameterisation
+  da <- toString(paste0("real ", delay_dpars))
+  db <- family$param
+  # recovery side: its own family's dist id and reparameterisation, r-prefixed
+  rdid <- dist_id
+  ra <- rb <- ""
+  if (use_recovery) {
+    rdpars <- family$dpars[(cfr_pos + 1):length(family$dpars)]
+    rfam <- attr(data, "recovery_family")
+    if (is.null(rfam)) rfam <- family
+    rdid <- primarycensored::pcd_stan_dist_id(rfam$family, type = "delay")
+    rb <- .family_stan_param(rfam$family)
+    for (dp in rfam$dpars) {
+      rb <- gsub(paste0("\\b", dp, "\\b"), paste0("r", dp), rb)
+    }
+    ra <- toString(paste0("real ", rdpars))
+  }
+
+  sig_tail <- paste("data real pwindow, data real swindow,",
+                    "array[] real primary_params")
   sig <- if (use_recovery) {
-    sprintf("data int y, %s, real cfr, %s, data real outcome,\n%s", DA, RA,
-            "  data real pwindow, data real swindow, array[] real primary_params")
+    sprintf("data int y, %s, real cfr, %s, data real outcome, %s",
+            da, ra, sig_tail)
   } else {
-    sprintf("data int y, %s, real cfr, data real outcome,\n%s", DA,
-            "  data real pwindow, data real swindow, array[] real primary_params")
+    sprintf("data int y, %s, real cfr, data real outcome, %s", da, sig_tail)
   }
   tmpl <- sprintf("\n  real cfrnow_%s_lpmf(%s) {%s\n  }",
-                  family_name, sig, body)
-  for (r in list(c("@RDID@", rdid), c("@DID@", dist_id), c("@PID@", primary_id),
-                 c("@DB@", DB), c("@RB@", RB))) {
+                  family_name, sig, .cure_lpmf_body(use_recovery))
+  subs <- list(c("@RDID@", rdid), c("@DID@", dist_id), c("@PID@", primary_id),
+               c("@DB@", db), c("@RB@", rb))
+  for (r in subs) {
     tmpl <- gsub(r[1], r[2], tmpl, fixed = TRUE)
   }
 

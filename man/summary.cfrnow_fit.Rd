@@ -41,9 +41,6 @@ the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd 
 }
 \seealso{
 Other fit:
-\code{\link[=cfr_default_prior]{cfr_default_prior()}},
-\code{\link[=cfr_prior]{cfr_prior()}},
-\code{\link[=fit_cfr]{fit_cfr()}},
-\code{\link[=fix_delay]{fix_delay()}}
+\code{\link[=fit_cfr]{fit_cfr()}}
 }
 \concept{fit}

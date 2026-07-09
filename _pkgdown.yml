@@ -9,7 +9,6 @@ reference:
   - prepare_cfr_data
   - as_epidist_cure_model
   - fit_cfr
-  - cfr_default_prior
 - title: Summarise
   contents:
   - summary.cfrnow_fit
