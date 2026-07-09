@@ -46,6 +46,7 @@ fit_cfr <- function(data, formula = mu ~ 1, family = brms::lognormal(),
     n_cases = nrow(cure),
     n_deaths = sum(cure$outcome == .CURE_DEATH),
     family = family$family,
+    use_recovery = isTRUE(attr(cure, "use_recovery")),
     cfr_prior_sd = .cfr_prior_sd(prior)
   )
   class(fit) <- c("cfrnow_fit", class(fit))

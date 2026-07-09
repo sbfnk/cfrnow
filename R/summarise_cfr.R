@@ -15,26 +15,36 @@ naive_cfr <- function(n_deaths, n_cases) {
 #' @param object A `cfrnow_fit`.
 #' @return A `draws_df` with columns `cfr`, `delay_mean`, `delay_sd`.
 #' @noRd
+.delay_moments <- function(dr, loc_var, scale_var, family) {
+  loc <- dr[[loc_var]]
+  sc <- exp(dr[[scale_var]])                           # log link on the 2nd par
+  if (family == "lognormal") {                         # loc = meanlog (identity)
+    mean <- exp(loc + sc^2 / 2)
+    list(mean = mean, sd = sqrt(exp(sc^2) - 1) * mean)
+  } else {                                             # gamma: loc = log-mean
+    mean <- exp(loc)
+    list(mean = mean, sd = mean / sqrt(sc))            # sc = shape
+  }
+}
+
 .cfr_quantities <- function(object) {
   dr <- posterior::as_draws_df(object)
   if (!"b_cfr_Intercept" %in% posterior::variables(dr)) {
     stop("summary() supports intercept-only `cfr` fits; for `cfr ~ covariates` ",
          "use brms::posterior_epred() on the fit directly.", call. = FALSE)
   }
-  cfr <- stats::plogis(dr[["b_cfr_Intercept"]])
-  if (object$cfrnow$family == "lognormal") {
-    meanlog <- dr[["b_Intercept"]]                     # identity link
-    sdlog <- exp(dr[["b_sigma_Intercept"]])            # log link
-    delay_mean <- exp(meanlog + sdlog^2 / 2)
-    delay_sd <- sqrt(exp(sdlog^2) - 1) * delay_mean
-  } else {                                             # gamma
-    delay_mean <- exp(dr[["b_Intercept"]])             # log link on the mean
-    shape <- exp(dr[["b_shape_Intercept"]])            # log link
-    delay_sd <- delay_mean / sqrt(shape)
+  fam <- object$cfrnow$family
+  scale2 <- if (fam == "lognormal") "sigma" else "shape"
+  d <- .delay_moments(dr, "b_Intercept", paste0("b_", scale2, "_Intercept"), fam)
+  res <- data.frame(cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
+                    delay_mean = d$mean, delay_sd = d$sd)
+  if (isTRUE(object$cfrnow$use_recovery)) {
+    r <- .delay_moments(dr, "b_rmu_Intercept",
+                        paste0("b_r", scale2, "_Intercept"), fam)
+    res$recovery_mean <- r$mean
+    res$recovery_sd <- r$sd
   }
-  res <- data.frame(cfr = cfr, delay_mean = delay_mean, delay_sd = delay_sd,
-                    .chain = dr$.chain, .iteration = dr$.iteration,
-                    .draw = dr$.draw)
+  res$.chain <- dr$.chain; res$.iteration <- dr$.iteration; res$.draw <- dr$.draw
   posterior::as_draws_df(res)
 }
 

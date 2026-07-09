@@ -14,8 +14,10 @@ already carrying \code{y}, \code{outcome}, \code{pwindow} and \code{swindow}.}
 A data frame of class \code{epidist_cure_model}.
 }
 \description{
-Produces the one-row-per-case data frame the model needs: \code{y} (the delay for
-deaths, the follow-up time for survivors), an \code{outcome} code, and the primary
-(\code{pwindow}) and secondary (\code{swindow}) censoring widths.
+Produces the one-row-per-case data frame the model needs: \code{y} (a delay for
+deaths and recoveries, the follow-up time for survivors), an \code{outcome} code,
+and the primary (\code{pwindow}) and secondary (\code{swindow}) censoring widths. When
+the input carries timed recoveries the result is flagged for the two-outcome
+fit via a \code{use_recovery} attribute.
 }
 \concept{cure_model}

@@ -30,9 +30,10 @@ deaths.
 `F`; a case still unresolved at the cut-off is right-censored,
 contributing `1 - cfr * F(t)` (it is non-fatal, or fatal but not yet
 resolved). With `F` fixed this is the Ghani/Nishiura estimator; here `F`
-is co-estimated and its uncertainty propagated. Onset interval-censoring
-and real-time right-truncation of `F` are handled by
-[primarycensored](https://primarycensored.epinowcast.org/).
+is co-estimated and its uncertainty propagated. If the line list carries
+recovery dates, a two-outcome fit also uses onset-to-recovery timing.
+Onset interval-censoring and real-time right-truncation of `F` are
+handled by [primarycensored](https://primarycensored.epinowcast.org/).
 
 ## Usage
 
@@ -87,7 +88,9 @@ informative prior on `mu`/`sigma`.
 
 Your line list needs `onset_date` and `death_date` (`NA` for cases that
 have not died). Optional `onset_lower`/`onset_upper` widen the onset
-censoring. `summary()` reports `rhat`/`ess_bulk` and flags
+censoring, and a `recovery_date` column switches on the two-outcome fit
+that also times recoveries. `summary()` reports `rhat`/`ess_bulk` (and
+`recovery_mean`/`_sd` when recoveries are used) and flags
 `cfr_low_information` when the CFR posterior has barely moved from its
 prior — expected early on, when the estimate is prior-driven.
 
@@ -114,13 +117,19 @@ these before quoting a number:
   in tail weight (how fast a recent case counts as “probably cured”) and
   the family is not identifiable from sparse data, so check sensitivity
   by refitting the other one.
+- **Recovery timing leans on complete discharge data.** In the
+  two-outcome fit an actually-recovered case whose recovery is
+  unrecorded stays censored and is pushed toward the fatal branch over
+  time, biasing `cfr` *up*. The death-only default (no `recovery_date`)
+  is insensitive to this, so prefer it where discharge recording is
+  patchy.
 
 ## Roadmap
 
-Known gaps, roughly in priority order: the two-outcome recovery-timing
-model (using `recovery_date`), not yet ported to the epidist backend; a
-death-reporting-delay nowcasting layer for the case denominator; and
-posterior-predictive checks.
+Known gaps, roughly in priority order: a death-reporting-delay
+nowcasting layer for the case denominator; posterior-predictive checks;
+and richer delay structure (covariates on the delay, separate recovery
+family).
 
 ## Requirements
 

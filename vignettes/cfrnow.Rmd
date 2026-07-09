@@ -102,11 +102,19 @@ prior on `mu`/`sigma` via the `prior` argument.
 fit_cfr(d, family = stats::Gamma(link = "log"))          # gamma delay
 ```
 
+## Recovery timing
+
+If the line list has a `recovery_date` column, `prepare_cfr_data()` times those
+recoveries and `fit_cfr()` switches to a two-outcome mixture-cure model that also
+estimates the onset-to-recovery delay (reported as `recovery_mean`/`recovery_sd`
+by `summary()`). This sharpens `cfr` when discharge recording is reliable, but an
+actually-recovered case whose recovery is *unrecorded* stays censored and is
+pushed toward the fatal branch over time, biasing `cfr` up — so prefer the
+death-only default where discharge data are patchy.
+
 ## Caveats
 
 The correction fixes a *timing* bias, not the data. A death that never reaches
 the line list is treated as a survivor and biases `cfr` down. Use the death
 *notification* date in `death_date` so the censoring absorbs any reporting lag;
-the delay the model then estimates is onset-to-notification. The two-outcome
-recovery-timing model (using `recovery_date`) is not yet available on the epidist
-backend.
+the delay the model then estimates is onset-to-notification.

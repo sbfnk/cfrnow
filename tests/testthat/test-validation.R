@@ -19,14 +19,17 @@ test_that("as_epidist_cure_model builds cure rows from prepare_cfr_data output",
   expect_equal(nrow(cure), d$n_cases)
 })
 
-test_that("recovery-timing fits are refused on the epidist backend for now", {
+test_that("recovery dates produce timed-recovery rows flagged for two outcomes", {
   ll <- data.frame(
-    onset_date = as.Date("2026-01-01") + c(0, 1),
-    death_date = as.Date(c("2026-01-05", NA)),
-    recovery_date = as.Date(c(NA, "2026-01-08"))
+    onset_date = as.Date("2026-01-01") + c(0, 1, 2),
+    death_date = as.Date(c("2026-01-05", NA, NA)),
+    recovery_date = as.Date(c(NA, "2026-01-08", NA))
   )
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
-  expect_error(as_epidist_cure_model(d), "recovery-timing")
+  cure <- as_epidist_cure_model(d)
+  expect_true(attr(cure, "use_recovery"))
+  expect_equal(sum(cure$outcome == 2), d$n_recovery)   # timed recovery row
+  expect_equal(sum(cure$outcome == 1), d$n_deaths)
 })
 
 test_that("naive_cfr is deaths/cases, and NA when there are no cases", {

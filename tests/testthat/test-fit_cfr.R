@@ -64,6 +64,22 @@ test_that("the formula interface puts covariates on the CFR", {
   expect_lt(fe["cfr_grplow", "Estimate"], 0)          # low group < high group
 })
 
+test_that("the two-outcome fit uses recovery timing and recovers CFR and F_R", {
+  skip_if_no_cmdstan()
+  set.seed(5)
+  ll <- simulate_linelist(n = 2000, cfr = 0.4, onset_days = 40,
+                          delay = LogNormal(mean = 12.75, sd = 7),
+                          recovery = LogNormal(mean = 21, sd = 9))
+  d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
+  expect_gt(d$n_recovery, 0)
+  s <- summary(fit_quick(d))
+  expect_true(all(c("recovery_mean", "recovery_sd") %in% s$quantity))
+  expect_gt(s[s$quantity == "cfr", "q50"], attr(s, "naive_cfr"))    # > naive
+  rm <- s[s$quantity == "recovery_mean", ]                          # true 21
+  expect_lt(rm[["q2.5"]], 21)
+  expect_gt(rm[["q97.5"]], 21)
+})
+
 test_that("a young outbreak is flagged low-information and print warns", {
   skip_if_no_cmdstan()
   set.seed(10)
