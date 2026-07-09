@@ -35,7 +35,8 @@ VignetteBuilder:
     knitr
 Remotes:
     epiforecasts/distspec,
-    epinowcast/epidist
+    epinowcast/epidist,
+    paul-buerkner/brms
 Additional_repositories:
     https://stan-dev.r-universe.dev
 Config/testthat/edition: 3
