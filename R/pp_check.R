@@ -106,10 +106,10 @@
     rsc <- lp(rscale_dpar)
   }
 
-  # Per-case follow-up horizon: days from the recorded onset to the cut-off. A
-  # NULL obs_time (a retrospective fit) means there is no truncation to replay.
-  obs_time <- object$cfrnow$obs_time
-  h <- if (is.null(obs_time)) {
+  # Per-case follow-up horizon: days from the recorded onset to the cut-off. NA
+  # obs_time (a retrospective fit) means no truncation.
+  obs_time <- object$cfrnow$obs_time %||% as.Date(NA)
+  h <- if (is.na(obs_time)) {
     rep(Inf, nrow(d))
   } else {
     as.numeric(as.Date(obs_time) - as.Date(onset)) + 1
