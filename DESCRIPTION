@@ -29,6 +29,7 @@ Imports:
     stats
 Suggests:
     cmdstanr,
+    ggplot2,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)

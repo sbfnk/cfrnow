@@ -147,26 +147,26 @@ The fit is precomputed (the vignette builder has no CmdStan); see
 read below.
 
 ```{r time-varying-plot, echo = FALSE, fig.width = 7, fig.height = 4.5, fig.alt = "Posterior CFR by onset week tracking the true logistic ramp, with the credible interval widening at the most recent week."}
+library(ggplot2)
 tv <- readRDS(system.file("vignette-data", "time_varying_cfr.rds",
   package = "cfrnow"
 ))
-band <- grDevices::adjustcolor("steelblue", alpha.f = 0.25)
-plot(tv$week, tv$median,
-  type = "n", ylim = range(tv$lower, tv$upper),
-  xlab = "onset week", ylab = "CFR",
-  main = "Recovered vs true time-varying CFR"
-)
-polygon(c(tv$week, rev(tv$week)), c(tv$lower, rev(tv$upper)),
-  col = band, border = NA
-)
-lines(tv$week, tv$true_cfr, lwd = 2)
-lines(tv$week, tv$median, col = "steelblue", lwd = 2)
-points(tv$week, tv$median, col = "steelblue", pch = 19)
-legend("topleft",
-  bty = "n",
-  legend = c("true CFR", "posterior median", "90% credible interval"),
-  lwd = c(2, 2, 8), col = c("black", "steelblue", band)
-)
+ggplot(tv, aes(week)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = "90% credible interval"),
+    alpha = 0.25
+  ) +
+  geom_line(aes(y = true_cfr, colour = "true CFR"), linewidth = 1) +
+  geom_line(aes(y = median, colour = "posterior median"), linewidth = 1) +
+  geom_point(aes(y = median, colour = "posterior median")) +
+  scale_colour_manual(
+    values = c("true CFR" = "black", "posterior median" = "steelblue")
+  ) +
+  scale_fill_manual(values = c("90% credible interval" = "steelblue")) +
+  labs(
+    x = "onset week", y = "CFR", colour = NULL, fill = NULL,
+    title = "Recovered vs true time-varying CFR"
+  ) +
+  theme_minimal()
 ```
 
 ## Delay family and fixing the delay
