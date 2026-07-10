@@ -1,62 +1,18 @@
-# Draw replicate outcomes from the posterior and replay the real-time
-# observation process, so the replicates are directly comparable to the data the
-# model was fit to. Returns the pieces the plots below need.
-.cfr_replicate <- function(object, ndraws) {
-  d <- object$data
-  onset <- object$cfrnow$onset
-  if (is.null(onset)) {
-    stop("pp_check_cfr() needs per-case onset dates; refit from ",
-      "prepare_cfr_data() output.",
-      call. = FALSE
-    )
-  }
-  n <- nrow(d)
-  fam <- object$cfrnow$family
-  scale_dpar <- if (fam == "lognormal") "sigma" else "shape"
-
-  total <- posterior::ndraws(object)
-  ids <- if (ndraws >= total) {
-    seq_len(total)
-  } else {
-    sort(sample.int(total, ndraws))
-  }
-  nd <- length(ids)
-
-  # Native delay parameters on the response scale, per draw and case, so
-  # covariate and time-varying fits are handled the same as intercept-only ones.
-  lp <- function(dpar) {
-    brms::posterior_linpred(
-      object,
-      dpar = dpar, transform = TRUE, draw_ids = ids
-    )
-  }
-  cfr <- lp("cfr") # probability
-  loc <- lp("mu") # meanlog (lognormal) or mean (gamma)
-  sc <- lp(scale_dpar) # sdlog (lognormal) or shape (gamma)
-
-  use_rec <- isTRUE(object$cfrnow$use_recovery)
-  if (use_rec) {
-    rfam <- object$cfrnow$recovery_family
-    rscale_dpar <- if (rfam == "lognormal") "rsigma" else "rshape"
-    rloc <- lp("rmu")
-    rsc <- lp(rscale_dpar)
-  }
-
-  # Per-case follow-up horizon: days from the recorded onset to the cut-off. NA
-  # obs_time (a retrospective fit) means no truncation.
-  obs_time <- object$cfrnow$obs_time %||% as.Date(NA)
-  h <- if (is.na(obs_time)) {
-    rep(Inf, n)
-  } else {
-    as.numeric(as.Date(obs_time) - as.Date(onset)) + 1
-  }
-
+# Simulate replicate outcomes over posterior draws and replay the real-time
+# observation process, then aggregate. Kept free of the fitted model so it can
+# be tested directly: `cfr`, `loc` and `sc` (and their recovery counterparts)
+# are ndraws-by-n matrices of per-draw, per-case parameters on the response
+# scale, `h` is the per-case follow-up horizon, and `observed` holds the
+# observed death and recovery counts and the observed death delays.
+.cfr_ppc_stats <- function(cfr, loc, sc, h, fam, use_rec, rloc, rsc, rfam,
+                           observed) {
+  nd <- nrow(cfr)
+  n <- ncol(cfr)
   draw_delay <- function(loc_i, sc_i, family) {
-    m <- length(loc_i)
     if (family == "lognormal") {
-      stats::rlnorm(m, loc_i, sc_i)
+      stats::rlnorm(length(loc_i), loc_i, sc_i)
     } else {
-      stats::rgamma(m, shape = sc_i, rate = sc_i / loc_i)
+      stats::rgamma(length(loc_i), shape = sc_i, rate = sc_i / loc_i)
     }
   }
 
@@ -81,26 +37,85 @@
       ))
     }
     counts[[k]] <- cts
-    delays[[k]] <- data.frame(.draw = k, delay = delay_day[obs_death])
+    dd <- delay_day[obs_death] # may be empty when a draw has no observed deaths
+    delays[[k]] <- data.frame(.draw = rep(k, length(dd)), delay = dd)
   }
 
-  observed <- data.frame(
-    outcome = "deaths", n = sum(d$outcome == .CURE_DEATH),
+  observed_counts <- data.frame(
+    outcome = "deaths", n = observed$deaths,
     stringsAsFactors = FALSE
   )
   if (use_rec) {
-    observed <- rbind(observed, data.frame(
-      outcome = "recoveries", n = sum(d$outcome == .CURE_RECOVERY),
+    observed_counts <- rbind(observed_counts, data.frame(
+      outcome = "recoveries", n = observed$recoveries,
       stringsAsFactors = FALSE
     ))
   }
 
   list(
     counts = do.call(rbind, counts),
-    observed_counts = observed,
+    observed_counts = observed_counts,
     delays = do.call(rbind, delays),
-    observed_delays = data.frame(delay = d$y[d$outcome == .CURE_DEATH])
+    observed_delays = data.frame(delay = observed$death_delays)
   )
+}
+
+# Pull the per-draw, per-case CFR and delay parameters out of the fit with
+# posterior_linpred (so covariate and time-varying fits work the same as
+# intercept-only ones), build the follow-up horizon, then hand off to
+# .cfr_ppc_stats.
+.cfr_replicate <- function(object, ndraws) {
+  onset <- object$cfrnow$onset
+  if (is.null(onset)) {
+    stop("pp_check_cfr() needs per-case onset dates; refit from ",
+      "prepare_cfr_data() output.",
+      call. = FALSE
+    )
+  }
+  d <- object$data
+  fam <- object$cfrnow$family
+  scale_dpar <- if (fam == "lognormal") "sigma" else "shape"
+
+  total <- posterior::ndraws(object)
+  ids <- if (ndraws >= total) {
+    seq_len(total)
+  } else {
+    sort(sample.int(total, ndraws))
+  }
+  lp <- function(dpar) {
+    brms::posterior_linpred(
+      object,
+      dpar = dpar, transform = TRUE, draw_ids = ids
+    )
+  }
+  cfr <- lp("cfr")
+  loc <- lp("mu")
+  sc <- lp(scale_dpar)
+
+  use_rec <- isTRUE(object$cfrnow$use_recovery)
+  rloc <- rsc <- rfam <- NULL
+  if (use_rec) {
+    rfam <- object$cfrnow$recovery_family
+    rscale_dpar <- if (rfam == "lognormal") "rsigma" else "rshape"
+    rloc <- lp("rmu")
+    rsc <- lp(rscale_dpar)
+  }
+
+  # Per-case follow-up horizon: days from the recorded onset to the cut-off. NA
+  # obs_time (a retrospective fit) means no truncation.
+  obs_time <- object$cfrnow$obs_time %||% as.Date(NA)
+  h <- if (is.na(obs_time)) {
+    rep(Inf, nrow(d))
+  } else {
+    as.numeric(as.Date(obs_time) - as.Date(onset)) + 1
+  }
+
+  observed <- list(
+    deaths = sum(d$outcome == .CURE_DEATH),
+    recoveries = if (use_rec) sum(d$outcome == .CURE_RECOVERY) else NA_integer_,
+    death_delays = d$y[d$outcome == .CURE_DEATH]
+  )
+  .cfr_ppc_stats(cfr, loc, sc, h, fam, use_rec, rloc, rsc, rfam, observed)
 }
 
 .cfr_ppc_counts_plot <- function(rep) {
