@@ -156,10 +156,3 @@ before you quote a number:
   drifts toward the fatal branch over time, biasing `cfr` *up*. The death-only
   default (no `recovery_date`) sidesteps this, so prefer it where discharge
   recording is patchy.
-
-## Roadmap
-
-The main remaining gap is a death-reporting-delay nowcasting layer for the case
-denominator, to handle cases that are under-ascertained or reported late.
-Posterior-predictive checks (`pp_check_cfr()`) and richer delay structure
-(covariates on the delay, a separate recovery family) are now in place.
