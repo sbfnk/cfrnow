@@ -138,7 +138,14 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   out <- as.data.frame(sm)
   names(out)[1] <- "quantity"
 
-  cfr_post_sd <- stats::sd(posterior::extract_variable(qs, "cfr"))
+  # Weak identification is a property of the fit, not of the ascertainment lens,
+  # so undo the shift and measure the CFR spread on the fitted (r = 1) scale
+  # before comparing with the (also r = 1) prior sd.
+  cfr_obs <- stats::plogis(
+    stats::qlogis(posterior::extract_variable(qs, "cfr")) +
+      log(ascertainment_ratio)
+  )
+  cfr_post_sd <- stats::sd(cfr_obs)
   prior_sd <- object$cfrnow$cfr_prior_sd
   low_info <- !is.na(prior_sd) && cfr_post_sd > info_tol * prior_sd
   attr(out, "naive_cfr") <- naive_cfr(

@@ -59,4 +59,10 @@ test_that("summary() applies the ascertainment correction to a real fit", {
   # the default leaves the CFR untouched
   expect_equal(cfr_med(summary(fit, ascertainment_ratio = 1)), cfr_med(base))
   expect_equal(attr(down, "ascertainment_ratio"), 2)
+
+  # the weak-identification flag reflects the fit, not the ascertainment lens
+  expect_equal(
+    attr(down, "cfr_low_information"),
+    attr(base, "cfr_low_information")
+  )
 })
