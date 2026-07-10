@@ -25,7 +25,7 @@
 #'   optional
 #'   `recovery_date` column (`NA` unless the case is a recorded non-fatal
 #'   recovery). Dates may be `Date` or coercible.
-#' @param obs_time Real-time cut-off (`Date` or coercible), or `NULL`/`NA` for a
+#' @param obs_time Real-time cut-off (`Date` or coercible), or `NULL` for a
 #'   retrospective fit in which every recorded death counts and survivors are
 #'   treated as fully resolved. In real time, a case with a recovery on or
 #'   before `obs_time` is resolved; one still alive and unresolved is
@@ -78,10 +78,16 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   no_recovery <- as.Date(rep(NA, nrow(linelist)))
   recovery <- optional_date_col("recovery_date", no_recovery)
 
-  # Normalise the cut-off to a typed Date up front: NULL (the default) and NA
-  # both mean a retrospective fit, so obs_time is a Date from here on.
-  obs_time <- if (is.null(obs_time)) as.Date(NA) else as.Date(obs_time)
-  retrospective <- is.na(obs_time)
+  # NULL means a retrospective fit. Store the cut-off as a typed Date so
+  # downstream code (and the fit) always sees a Date; reject a stray NA so it is
+  # not mistaken for a real cut-off.
+  retrospective <- is.null(obs_time)
+  obs_time <- if (retrospective) as.Date(NA) else as.Date(obs_time)
+  if (!retrospective && is.na(obs_time)) {
+    stop("`obs_time` must be a valid date, or NULL for a retrospective fit.",
+      call. = FALSE
+    )
+  }
   if (is.null(t0)) t0 <- min(onset, na.rm = TRUE) - max_delay
   t0 <- as.Date(t0)
 

@@ -21,7 +21,7 @@ optional
 \code{recovery_date} column (\code{NA} unless the case is a recorded non-fatal
 recovery). Dates may be \code{Date} or coercible.}
 
-\item{obs_time}{Real-time cut-off (\code{Date} or coercible), or \code{NULL}/\code{NA} for a
+\item{obs_time}{Real-time cut-off (\code{Date} or coercible), or \code{NULL} for a
 retrospective fit in which every recorded death counts and survivors are
 treated as fully resolved. In real time, a case with a recovery on or
 before \code{obs_time} is resolved; one still alive and unresolved is
