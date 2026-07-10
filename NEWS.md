@@ -1,3 +1,10 @@
+# cfrnow (development version)
+
+* `pp_check_cfr()` runs a posterior-predictive check on a fit: it draws replicate
+  line-list outcomes from the posterior, replays the real-time truncation, and
+  compares the observed death counts (plus recoveries in a two-outcome fit) and
+  the observed onset-to-death delays against the replicates (#14).
+
 # cfrnow 0.1.0
 
 First release.

@@ -166,7 +166,8 @@ reading before you quote a number:
 
 ## Roadmap
 
-Known gaps, roughly in priority order: a death-reporting-delay
-nowcasting layer for the case denominator; posterior-predictive checks;
-and richer delay structure (covariates on the delay, separate recovery
-family).
+The main remaining gap is a death-reporting-delay nowcasting layer for
+the case denominator, to handle cases that are under-ascertained or
+reported late. Posterior-predictive checks (`pp_check_cfr()`) and richer
+delay structure (covariates on the delay, a separate recovery family)
+are now in place.

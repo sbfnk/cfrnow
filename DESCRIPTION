@@ -1,6 +1,6 @@
 Package: cfrnow
 Title: Real-Time Case Fatality Ratio via a Mixture-Cure Survival Model
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R:
     person("Sebastian", "Funk", , "sebastian.funk@lshtm.ac.uk",
            role = c("aut", "cre"))
@@ -26,6 +26,7 @@ Imports:
     epidist,
     posterior,
     primarycensored,
+    rlang,
     stats
 Suggests:
     cmdstanr,
@@ -43,3 +44,4 @@ Additional_repositories:
     https://stan-dev.r-universe.dev
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.3
