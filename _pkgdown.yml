@@ -9,9 +9,10 @@ reference:
   - prepare_cfr_data
   - as_epidist_cure_model
   - fit_cfr
-- title: Summarise
+- title: Summarise and check
   contents:
   - summary.cfrnow_fit
+  - pp_check_cfr
 - title: Simulation
   contents:
   - simulate_linelist
