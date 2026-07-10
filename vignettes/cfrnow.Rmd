@@ -112,17 +112,62 @@ fit <- fit_cfr(grouped,
 brms::fixef(fit) # the cfr_grouplow coefficient is negative (low group < high)
 ```
 
-For a time-varying CFR, derive a time index from the `onset` column and smooth
-over it (keep the smooth's `k` below the number of distinct weeks):
+For a time-varying CFR, derive a time index from the `onset` column and put a
+curve on it. To show that the fit recovers a real signal, we simulate a line
+list whose true CFR ramps logistically from about 0.15 to 0.6 over twelve onset
+weeks, prepare it at a cut-off three weeks past the last onset, and fit a natural
+spline in the week. A fixed-degree spline (`ns(week, df = 3)`) enters the CFR as
+ordinary basis columns, which samples cleanly; a penalised smooth (`s(week)`)
+would fit too, but its smoothing-variance parameter makes the posterior harder
+to sample. The delay is fixed here to isolate the time-varying CFR:
 
 ```{r time-varying, eval = FALSE}
-cure <- prepare_cfr_data(ll, obs_time = cutoff) |>
+true_cfr <- function(week) plogis(-1.7 + 0.19 * week)
+onset_date <- as.Date("2026-01-01") + sample.int(12 * 7, 4000, replace = TRUE) - 1
+week <- as.numeric(onset_date - min(onset_date)) %/% 7
+fatal <- runif(4000) < true_cfr(week)
+death_date <- as.Date(rep(NA, length(onset_date)))
+onset_frac <- runif(4000)
+death_date[fatal] <- onset_date[fatal] + floor(onset_frac[fatal] + rlnorm(sum(fatal), 2.41, 0.51))
+ll_tv <- data.frame(onset_date, death_date)
+
+cure <- prepare_cfr_data(ll_tv, obs_time = max(onset_date) + 21) |>
   as_epidist_cure_model()
 cure$week <- as.numeric(cure$onset - min(cure$onset)) %/% 7
-fit_cfr(cure,
-  delay = onset_to_death,
-  formula = brms::bf(mu ~ 1, cfr ~ s(week, k = 5))
+fit <- fit_cfr(cure,
+  delay = LogNormal(meanlog = 2.41, sdlog = 0.51),
+  formula = brms::bf(mu ~ 1, cfr ~ splines::ns(week, df = 3))
 )
+```
+
+Recovering `cfr(week)` with `brms::posterior_epred(fit, dpar = "cfr")` and plotting its
+posterior against the true curve, the spline tracks the ramp closely and, as
+expected, widens at the most recent week, where cases are still largely censored.
+The fit is precomputed (the vignette builder has no CmdStan); see
+`data-raw/time_varying_cfr.R` for the script that produces the cached summary
+read below.
+
+```{r time-varying-plot, echo = FALSE, fig.width = 7, fig.height = 4.5, fig.alt = "Posterior CFR by onset week tracking the true logistic ramp, with the credible interval widening at the most recent week."}
+library(ggplot2)
+tv <- readRDS(system.file("vignette-data", "time_varying_cfr.rds",
+  package = "cfrnow"
+))
+ggplot(tv, aes(week)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = "90% credible interval"),
+    alpha = 0.25
+  ) +
+  geom_line(aes(y = true_cfr, colour = "true CFR"), linewidth = 1) +
+  geom_line(aes(y = median, colour = "posterior median"), linewidth = 1) +
+  geom_point(aes(y = median, colour = "posterior median")) +
+  scale_colour_manual(
+    values = c("true CFR" = "black", "posterior median" = "steelblue")
+  ) +
+  scale_fill_manual(values = c("90% credible interval" = "steelblue")) +
+  labs(
+    x = "onset week", y = "CFR", colour = NULL, fill = NULL,
+    title = "Recovered vs true time-varying CFR"
+  ) +
+  theme_minimal()
 ```
 
 ## Delay family and fixing the delay
