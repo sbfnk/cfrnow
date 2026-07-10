@@ -73,6 +73,11 @@
     )
   }
   d <- object$data
+  if (length(onset) != nrow(d)) {
+    stop("pp_check_cfr(): stored onset does not line up with the fitted data.",
+      call. = FALSE
+    )
+  }
   fam <- object$cfrnow$family
   scale_dpar <- if (fam == "lognormal") "sigma" else "shape"
 
@@ -118,11 +123,11 @@
   .cfr_ppc_stats(cfr, loc, sc, h, fam, use_rec, rloc, rsc, rfam, observed)
 }
 
-.cfr_ppc_counts_plot <- function(rep) {
-  ggplot2::ggplot(rep$counts, ggplot2::aes(x = .data[["n"]])) +
+.cfr_ppc_counts_plot <- function(reps) {
+  ggplot2::ggplot(reps$counts, ggplot2::aes(x = .data[["n"]])) +
     ggplot2::geom_histogram(bins = 30, fill = "steelblue", alpha = 0.6) +
     ggplot2::geom_vline(
-      data = rep$observed_counts,
+      data = reps$observed_counts,
       ggplot2::aes(xintercept = .data[["n"]]), linewidth = 1
     ) +
     ggplot2::facet_wrap(~outcome, scales = "free") +
@@ -135,14 +140,14 @@
     ggplot2::theme_minimal()
 }
 
-.cfr_ppc_delay_plot <- function(rep) {
+.cfr_ppc_delay_plot <- function(reps) {
   ggplot2::ggplot(mapping = ggplot2::aes(x = .data[["delay"]])) +
     ggplot2::stat_ecdf(
-      data = rep$delays, ggplot2::aes(group = .data[[".draw"]]),
+      data = reps$delays, ggplot2::aes(group = .data[[".draw"]]),
       geom = "step", colour = "steelblue", alpha = 0.2
     ) +
     ggplot2::stat_ecdf(
-      data = rep$observed_delays, geom = "step", linewidth = 1
+      data = reps$observed_delays, geom = "step", linewidth = 1
     ) +
     ggplot2::labs(
       x = "observed onset-to-death delay (days)", y = "ECDF",
@@ -171,6 +176,9 @@
 #' recovery) counts and the observed onset-to-death delays. The split of the
 #' remaining cases into censored versus untimed-resolved is not part of the
 #' generative model, so it is left out.
+#'
+#' The check is stochastic: it subsamples posterior draws and simulates
+#' outcomes, so call [set.seed()] beforehand for reproducible plots.
 #'
 #' @param object A `cfrnow_fit` from [fit_cfr()].
 #' @param type Which check to plot: `"counts"` (default) or `"delay"`.

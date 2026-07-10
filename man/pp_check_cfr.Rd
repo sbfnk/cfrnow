@@ -36,6 +36,9 @@ Only the quantities the model generates are checked: the observed death (and
 recovery) counts and the observed onset-to-death delays. The split of the
 remaining cases into censored versus untimed-resolved is not part of the
 generative model, so it is left out.
+
+The check is stochastic: it subsamples posterior draws and simulates
+outcomes, so call \code{\link[=set.seed]{set.seed()}} beforehand for reproducible plots.
 }
 \examples{
 \dontrun{
