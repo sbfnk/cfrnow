@@ -126,8 +126,9 @@ true_cfr <- function(week) plogis(-1.7 + 0.19 * week)
 onset_date <- as.Date("2026-01-01") + sample.int(12 * 7, 4000, replace = TRUE) - 1
 week <- as.numeric(onset_date - min(onset_date)) %/% 7
 fatal <- runif(4000) < true_cfr(week)
-death_date <- as.Date(NA)
-death_date[fatal] <- onset_date[fatal] + round(rlnorm(sum(fatal), 2.41, 0.51))
+death_date <- as.Date(rep(NA, length(onset_date)))
+onset_frac <- runif(4000)
+death_date[fatal] <- onset_date[fatal] + floor(onset_frac[fatal] + rlnorm(sum(fatal), 2.41, 0.51))
 ll_tv <- data.frame(onset_date, death_date)
 
 cure <- prepare_cfr_data(ll_tv, obs_time = max(onset_date) + 21) |>
@@ -139,7 +140,7 @@ fit <- fit_cfr(cure,
 )
 ```
 
-Recovering `cfr(week)` with `posterior_epred(fit, dpar = "cfr")` and plotting its
+Recovering `cfr(week)` with `brms::posterior_epred(fit, dpar = "cfr")` and plotting its
 posterior against the true curve, the spline tracks the ramp closely and, as
 expected, widens at the most recent week, where cases are still largely censored.
 The fit is precomputed (the vignette builder has no CmdStan); see
