@@ -42,8 +42,10 @@ through a growing epidemic.
 
 ```{r simulate}
 set.seed(1)
-ll <- simulate_linelist(n = 500, cfr = 0.55, onset_days = 45,
-                        delay = LogNormal(mean = 12.75, sd = 7))
+ll <- simulate_linelist(
+  n = 500, cfr = 0.55, onset_days = 45,
+  delay = LogNormal(mean = 12.75, sd = 7)
+)
 head(ll)
 ```
 
@@ -59,7 +61,7 @@ cutoff <- max(ll$onset_date) - 3
 d <- prepare_cfr_data(ll, obs_time = cutoff)
 c(cases = d$n_cases, deaths = d$n_deaths, censored = d$n_cens)
 naive <- d$n_deaths / d$n_cases
-round(naive, 3)  # the downward-biased naive ratio
+round(naive, 3) # the downward-biased naive ratio
 ```
 
 ## Fitting
@@ -91,29 +93,36 @@ two groups with different true CFRs and recovering the difference:
 
 ```{r formula, eval = FALSE}
 grp <- function(n, cfr, label) {
-  d <- as_epidist_cure_model(prepare_cfr_data(
-    simulate_linelist(n = n, cfr = cfr, delay = LogNormal(mean = 12.75, sd = 7)),
-    obs_time = NULL
-  ))
+  d <- simulate_linelist(n = n, cfr = cfr, delay = LogNormal(mean = 12.75, sd = 7)) |>
+    prepare_cfr_data(obs_time = NULL) |>
+    as_epidist_cure_model()
   d$group <- label
   d
 }
-grouped <- as_epidist_cure_model(rbind(grp(800, 0.2, "low"),
-                                       grp(800, 0.6, "high")))
+grouped <- rbind(
+  grp(800, 0.2, "low"),
+  grp(800, 0.6, "high")
+) |>
+  as_epidist_cure_model()
 
-fit <- fit_cfr(grouped, delay = onset_to_death,
-               formula = brms::bf(mu ~ 1, cfr ~ group))
-brms::fixef(fit)   # the cfr_grouplow coefficient is negative (low group < high)
+fit <- fit_cfr(grouped,
+  delay = onset_to_death,
+  formula = brms::bf(mu ~ 1, cfr ~ group)
+)
+brms::fixef(fit) # the cfr_grouplow coefficient is negative (low group < high)
 ```
 
 For a time-varying CFR, derive a time index from the `onset` column and smooth
 over it (keep the smooth's `k` below the number of distinct weeks):
 
 ```{r time-varying, eval = FALSE}
-cure <- as_epidist_cure_model(prepare_cfr_data(ll, obs_time = cutoff))
+cure <- prepare_cfr_data(ll, obs_time = cutoff) |>
+  as_epidist_cure_model()
 cure$week <- as.numeric(cure$onset - min(cure$onset)) %/% 7
-fit_cfr(cure, delay = onset_to_death,
-        formula = brms::bf(mu ~ 1, cfr ~ s(week, k = 5)))
+fit_cfr(cure,
+  delay = onset_to_death,
+  formula = brms::bf(mu ~ 1, cfr ~ s(week, k = 5))
+)
 ```
 
 ## Delay family and fixing the delay
@@ -125,8 +134,8 @@ a native parameter a fixed number instead of a `Normal()` prior to hold it fixed
 fixing the whole delay gives the Ghani/Nishiura estimator.
 
 ```{r family, eval = FALSE}
-fit_cfr(d, delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08)))  # gamma
-fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51))                   # fixed delay
+fit_cfr(d, delay = Gamma(shape = Normal(3.3, 1), rate = Normal(0.26, 0.08))) # gamma
+fit_cfr(d, delay = LogNormal(meanlog = 2.41, sdlog = 0.51)) # fixed delay
 ```
 
 ## Recovery timing
@@ -137,8 +146,10 @@ If the line list has a `recovery_date` column and you pass a `recovery_delay`,
 may use a different family from the death delay.
 
 ```{r recovery-fit, eval = FALSE}
-fit_cfr(d, delay = onset_to_death,
-        recovery_delay = LogNormal(meanlog = Normal(2.9, 0.3), sdlog = Normal(0.5, 0.2)))
+fit_cfr(d,
+  delay = onset_to_death,
+  recovery_delay = LogNormal(meanlog = Normal(2.9, 0.3), sdlog = Normal(0.5, 0.2))
+)
 ```
 
 This sharpens `cfr` when discharge recording is reliable, but an actually-recovered

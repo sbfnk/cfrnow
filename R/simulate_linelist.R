@@ -29,15 +29,18 @@
 #' @return A data frame with `onset_date`, `death_date` and, if `recovery` is
 #'   given, `recovery_date`.
 #' @examples
-#' simulate_linelist(n = 5, cfr = 0.6,
-#'                   delay = LogNormal(mean = 12.75, sd = 7))
+#' simulate_linelist(
+#'   n = 5, cfr = 0.6,
+#'   delay = LogNormal(mean = 12.75, sd = 7)
+#' )
 #' @export
 simulate_linelist <- function(n = 200, cfr = 0.5, delay, recovery = NULL,
                               onset_start = as.Date("2026-01-01"),
                               onset_days = 60) {
   if (missing(delay)) {
     stop("supply a `delay` (a distspec distribution with fixed parameters).",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
   onset <- as.Date(onset_start) + sample.int(onset_days, n, replace = TRUE) - 1
   fatal <- stats::runif(n) < cfr
@@ -74,10 +77,11 @@ sample_delay <- function(n, delay) {
   pars <- get_parameters(delay)[delay_native_order(fam)]
   if (!all(vapply(pars, is.numeric, logical(1)))) {
     stop("simulate_linelist() needs a delay with fixed parameters (numbers), ",
-         "not priors.", call. = FALSE)
+      "not priors.",
+      call. = FALSE
+    )
   }
-  switch(
-    fam,
+  switch(fam,
     lognormal = stats::rlnorm(n, pars[["meanlog"]], pars[["sdlog"]]),
     gamma = stats::rgamma(n, shape = pars[["shape"]], rate = pars[["rate"]])
   )
