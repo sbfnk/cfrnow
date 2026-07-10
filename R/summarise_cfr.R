@@ -25,7 +25,23 @@ naive_cfr <- function(n_deaths, n_cases) {
   }
 }
 
-.cfr_quantities <- function(object) {
+#' Correct the ascertained CFR for outcome-dependent ascertainment
+#'
+#' The model fits the fatality risk among *ascertained* cases. If fatal cases
+#' enter the line list at `r` times the rate of non-fatal ones, the population
+#' CFR is the ascertained CFR shifted on the logit scale by `-log(r)`. `r` is
+#' not identified from the line list, so it is supplied, not estimated; `r = 1`
+#' (unbiased ascertainment) leaves the CFR unchanged.
+#' @param logit_cfr Logit-scale CFR draws.
+#' @param ascertainment_ratio Ratio `r` of the ascertainment probability of
+#'   fatal to non-fatal cases.
+#' @return CFR draws on the (0, 1) scale.
+#' @noRd
+.ascertainment_adjust <- function(logit_cfr, ascertainment_ratio) {
+  stats::plogis(logit_cfr - log(ascertainment_ratio))
+}
+
+.cfr_quantities <- function(object, ascertainment_ratio = 1) {
   dr <- posterior::as_draws_df(object)
   if (!"b_cfr_Intercept" %in% posterior::variables(dr)) {
     stop("summary() supports intercept-only `cfr` fits; for a `cfr ~ x` fit ",
@@ -40,7 +56,7 @@ naive_cfr <- function(n_deaths, n_cases) {
     paste0("b_", scale2, "_Intercept"), fam
   )
   res <- data.frame(
-    cfr = stats::plogis(dr[["b_cfr_Intercept"]]),
+    cfr = .ascertainment_adjust(dr[["b_cfr_Intercept"]], ascertainment_ratio),
     delay_mean = d$mean, delay_sd = d$sd
   )
   if (isTRUE(object$cfrnow$use_recovery)) {
@@ -72,22 +88,44 @@ naive_cfr <- function(n_deaths, n_cases) {
 #' the `cfr_low_information` attribute: `TRUE` when the CFR posterior sd exceeds
 #' `info_tol` times the prior sd.
 #'
+#' The CFR the model fits is the fatality risk among *ascertained* cases. If
+#' ascertainment is outcome-dependent -- fatal cases entering the line list at a
+#' different rate from non-fatal ones -- this differs from the population CFR.
+#' `ascertainment_ratio` (`r`) is the ratio of the ascertainment probability of
+#' fatal to non-fatal cases; the reported CFR is shifted on the logit scale by
+#' `-log(r)`, so `r > 1` (fatal cases over-ascertained) lowers it and `r < 1`
+#' (e.g. deaths not linked back to cases) raises it. `r` is *not* identifiable
+#' from the line list; it is an external assumption, not something the data can
+#' estimate, so it defaults to 1 (unbiased ascertainment). Because the
+#' correction is a post-hoc logit shift, sweep a range of `r` to show its
+#' leverage rather than trusting a single value.
+#'
 #' @param object A `cfrnow_fit` from [fit_cfr()].
 #' @param probs Quantiles to report.
 #' @param info_tol Low-information threshold: flag when the CFR posterior sd is
 #'   more than this fraction of the prior sd. Defaults to 0.9.
+#' @param ascertainment_ratio Ratio `r` of the ascertainment probability of
+#'   fatal to non-fatal cases, used to correct the CFR for outcome-dependent
+#'   ascertainment (see Details). A single positive number; defaults to 1 (no
+#'   correction). Not estimable from the data.
 #' @param ... Unused.
 #' @return A data frame with one row per quantity (`cfr`, `delay_mean`,
-#'   `delay_sd`), carrying `naive_cfr`, `n_cases`, `n_deaths`, `cfr_prior_sd`
-#'   and `cfr_low_information` attributes.
+#'   `delay_sd`), carrying `naive_cfr`, `n_cases`, `n_deaths`, `cfr_prior_sd`,
+#'   `cfr_low_information` and `ascertainment_ratio` attributes.
 #' @family fit
 #' @export
 summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
-                               info_tol = 0.9, ...) {
+                               info_tol = 0.9, ascertainment_ratio = 1, ...) {
   if (!inherits(object, "cfrnow_fit")) {
     stop("`object` must come from fit_cfr().", call. = FALSE)
   }
-  qs <- .cfr_quantities(object)
+  if (!is.numeric(ascertainment_ratio) || length(ascertainment_ratio) != 1 ||
+        !is.finite(ascertainment_ratio) || ascertainment_ratio <= 0) {
+    stop("`ascertainment_ratio` must be a single positive number.",
+      call. = FALSE
+    )
+  }
+  qs <- .cfr_quantities(object, ascertainment_ratio)
   qcols <- paste0("q", probs * 100)
   sm <- posterior::summarise_draws(
     qs,
@@ -111,6 +149,7 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   attr(out, "n_deaths") <- object$cfrnow$n_deaths
   attr(out, "cfr_prior_sd") <- prior_sd
   attr(out, "cfr_low_information") <- low_info
+  attr(out, "ascertainment_ratio") <- ascertainment_ratio
   out
 }
 

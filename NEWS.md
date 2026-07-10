@@ -1,3 +1,10 @@
+# cfrnow (development version)
+
+* `summary()` gains an `ascertainment_ratio` argument that corrects the CFR for
+  outcome-dependent case ascertainment (fatal and non-fatal cases entering the
+  line list at different rates). The ratio is an external assumption, not
+  estimated from the data.
+
 # cfrnow 0.1.0
 
 First release.
