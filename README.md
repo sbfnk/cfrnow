@@ -163,18 +163,3 @@ reading before you quote a number:
   stays censored and drifts toward the fatal branch over time, biasing
   `cfr` *up*. The death-only default (no `recovery_date`) sidesteps
   this, so prefer it where discharge recording is patchy.
-
-## Roadmap
-
-The CFR the model reports is the fatality risk among *ascertained*
-cases. `summary(ascertainment_ratio = )` corrects it for
-outcome-dependent ascertainment – fatal and non-fatal cases entering the
-line list at different rates – but that ratio is not identifiable from
-the line list alone: pinning it down needs a second,
-independently-biased data stream (say serology, or a separate death
-registry), which is the main open direction. Note that a case-count
-nowcast does not help here – under outcome-independent reporting it
-scales numerator and denominator together and leaves the CFR unchanged,
-so it belongs in downstream burden estimates, not in the CFR itself.
-Other gaps: posterior-predictive checks, and richer delay structure
-(covariates on the delay, a separate recovery family).
