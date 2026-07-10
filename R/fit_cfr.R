@@ -50,8 +50,10 @@
 #' @family fit
 #' @export
 fit_cfr <- function(data,
-                    delay = LogNormal(meanlog = Normal(2, 1),
-                                      sdlog = Normal(0.5, 0.3)),
+                    delay = LogNormal(
+                      meanlog = Normal(2, 1),
+                      sdlog = Normal(0.5, 0.3)
+                    ),
                     cfr_prior = Beta(1, 1), recovery_delay = NULL,
                     formula = mu ~ 1, ...) {
   cure <- as_epidist_cure_model(data)
@@ -72,8 +74,10 @@ fit_cfr <- function(data,
     }
   }
   use_recovery <- isTRUE(attr(cure, "use_recovery"))
-  fit <- epidist::epidist(cure, formula = formula, family = dfam,
-                          prior = prior, merge_priors = FALSE, ...)
+  fit <- epidist::epidist(cure,
+    formula = formula, family = dfam,
+    prior = prior, merge_priors = FALSE, ...
+  )
   fit$cfrnow <- list(
     n_cases = nrow(cure),
     n_deaths = sum(cure$outcome == .CURE_DEATH),

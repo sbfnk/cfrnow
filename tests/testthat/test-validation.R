@@ -2,8 +2,10 @@
 # they run everywhere and exercise the error paths taken before the sampler.
 
 test_that("as_epidist_cure_model needs the model columns", {
-  expect_error(as_epidist_cure_model(data.frame(x = 1)),
-               "y|outcome|pwindow|swindow")
+  expect_error(
+    as_epidist_cure_model(data.frame(x = 1)),
+    "y|outcome|pwindow|swindow"
+  )
 })
 
 test_that("as_epidist_cure_model builds cure rows from prepare_cfr_data output", {
@@ -14,8 +16,8 @@ test_that("as_epidist_cure_model builds cure rows from prepare_cfr_data output",
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
   cure <- as_epidist_cure_model(d)
   expect_s3_class(cure, "epidist_cure_model")
-  expect_equal(sum(cure$outcome == 1), d$n_deaths)   # 1 observed death
-  expect_equal(sum(cure$outcome == 0), d$n_cens)     # future death + survivor
+  expect_equal(sum(cure$outcome == 1), d$n_deaths) # 1 observed death
+  expect_equal(sum(cure$outcome == 0), d$n_cens) # future death + survivor
   expect_equal(nrow(cure), d$n_cases)
 })
 
@@ -28,7 +30,7 @@ test_that("recovery dates produce timed-recovery rows flagged for two outcomes",
   d <- prepare_cfr_data(ll, obs_time = as.Date("2026-01-10"))
   cure <- as_epidist_cure_model(d)
   expect_true(attr(cure, "use_recovery"))
-  expect_equal(sum(cure$outcome == 2), d$n_recovery)   # timed recovery row
+  expect_equal(sum(cure$outcome == 2), d$n_recovery) # timed recovery row
   expect_equal(sum(cure$outcome == 1), d$n_deaths)
 })
 
@@ -40,26 +42,28 @@ test_that("naive_cfr is deaths/cases, and NA when there are no cases", {
 test_that(".cfr_prior_sd reads a normal cfr prior and is NA otherwise", {
   expect_true(is.na(.cfr_prior_sd(brms::set_prior("beta(1, 1)", class = "b"))))
   s <- .cfr_prior_sd(.cfr_prior_to_brms(Beta(1, 1)))
-  expect_true(is.finite(s) && s > 0 && s < 0.5)       # (0,1)-scale prior sd
+  expect_true(is.finite(s) && s > 0 && s < 0.5) # (0,1)-scale prior sd
 })
 
 test_that(".delay_family_prior maps fixed params to constant priors", {
   p <- .delay_family_prior(LogNormal(meanlog = 2.41, sdlog = 0.51))$prior
   expect_true(all(grepl("^constant\\(", p$prior)))
   loc <- as.numeric(sub("constant\\(([^)]+)\\)", "\\1", p$prior[p$dpar == ""]))
-  expect_equal(loc, 2.41, tolerance = 1e-6)          # meanlog is identity-linked
+  expect_equal(loc, 2.41, tolerance = 1e-6) # meanlog is identity-linked
 })
 
 test_that(".delay_family_prior maps Normal() params to normal priors and family", {
-  dd <- .delay_family_prior(LogNormal(meanlog = Normal(2.4, 0.2),
-                                      sdlog = Normal(0.5, 0.15)))
+  dd <- .delay_family_prior(LogNormal(
+    meanlog = Normal(2.4, 0.2),
+    sdlog = Normal(0.5, 0.15)
+  ))
   expect_equal(dd$family$family, "lognormal")
   expect_true(any(grepl("normal\\(2.4", dd$prior$prior)))
   expect_error(.delay_family_prior(5), "distspec")
 })
 
 test_that(".cfr_prior_to_brms turns a Beta into a logit-normal of matching sd", {
-  p <- .cfr_prior_to_brms(Beta(1, 1))                # uniform: sd = 1/sqrt(12)
+  p <- .cfr_prior_to_brms(Beta(1, 1)) # uniform: sd = 1/sqrt(12)
   expect_equal(.cfr_prior_sd(p), 1 / sqrt(12), tolerance = 0.03)
   expect_error(.cfr_prior_to_brms(Gamma(1, 1)), "Beta")
 })
@@ -69,10 +73,14 @@ test_that("simulate_linelist requires a delay", {
 })
 
 test_that("prepare_cfr_data requires onset_date and death_date columns", {
-  expect_error(prepare_cfr_data(data.frame(death_date = as.Date("2026-01-05"))),
-               "onset_date")
-  expect_error(prepare_cfr_data(data.frame(onset_date = as.Date("2026-01-01"))),
-               "death_date")
+  expect_error(
+    prepare_cfr_data(data.frame(death_date = as.Date("2026-01-05"))),
+    "onset_date"
+  )
+  expect_error(
+    prepare_cfr_data(data.frame(onset_date = as.Date("2026-01-01"))),
+    "death_date"
+  )
 })
 
 test_that("summary.cfrnow_fit rejects objects not from fit_cfr", {

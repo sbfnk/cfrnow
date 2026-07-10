@@ -6,11 +6,12 @@
 #' @return Character vector of the two native parameter names.
 #' @noRd
 delay_native_order <- function(family) {
-  switch(
-    family,
+  switch(family,
     lognormal = c("meanlog", "sdlog"),
     gamma = c("shape", "rate"),
     stop("unsupported delay family '", family,
-         "'; cfrnow supports lognormal and gamma.", call. = FALSE)
+      "'; cfrnow supports lognormal and gamma.",
+      call. = FALSE
+    )
   )
 }
