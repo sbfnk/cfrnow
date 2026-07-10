@@ -65,7 +65,7 @@ number (held fixed; fixing the whole delay gives the Ghani/Nishiura
 estimator). The `cfr_prior` is a `Beta()` and matters because the CFR is
 weakly identified early on: `Beta(1, 1)` is uniform, `Beta(1, 9)`
 favours a low CFR, and `Beta(6.6, 13.4)` (mean 0.33) suits a
-high-fatality pathogen. Here we use the BDBV/Isiro onset-to-death prior:
+high-fatality pathogen.
 
 ``` r
 onset_to_death <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
