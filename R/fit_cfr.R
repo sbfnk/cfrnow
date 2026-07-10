@@ -56,9 +56,12 @@ fit_cfr <- function(data,
                     ),
                     cfr_prior = Beta(1, 1), recovery_delay = NULL,
                     formula = mu ~ 1, ...) {
-  # Kept so posterior-predictive checks can replay the real-time truncation;
-  # NA (retrospective) means every case is fully followed up.
-  obs_time <- if (inherits(data, "cfrnow_data")) data$obs_time else as.Date(NA)
+  # Kept so posterior-predictive checks can replay the real-time truncation. A
+  # missing cut-off (a retrospective fit, or data not from prepare_cfr_data())
+  # is stored as NULL, so the check can tell "no truncation to replay" apart
+  # from a real cut-off.
+  ot <- if (inherits(data, "cfrnow_data")) data$obs_time else NULL
+  obs_time <- if (length(ot) == 1 && !is.na(ot)) ot else NULL
   cure <- as_epidist_cure_model(data)
   dd <- .delay_family_prior(delay, main = TRUE)
   dfam <- dd$family
