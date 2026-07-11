@@ -1,5 +1,9 @@
 # cfrnow (development version)
 
+* `pp_check_cfr()` runs a posterior-predictive check on a fit: it draws replicate
+  line-list outcomes from the posterior, replays the real-time truncation, and
+  compares the observed death counts (plus recoveries in a two-outcome fit) and
+  the observed onset-to-death delays against the replicates (#14).
 * `summary()` gains an `ascertainment_ratio` argument that corrects the CFR for
   outcome-dependent case ascertainment (fatal and non-fatal cases entering the
   line list at different rates). The ratio is an external assumption, not

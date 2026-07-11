@@ -63,7 +63,8 @@ correction is a post-hoc logit shift, sweep a range of \code{r} to show its
 leverage rather than trusting a single value.
 }
 \seealso{
-Other fit:
-\code{\link[=fit_cfr]{fit_cfr()}}
+Other fit: 
+\code{\link{fit_cfr}()},
+\code{\link{pp_check_cfr}()}
 }
 \concept{fit}

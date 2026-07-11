@@ -18,10 +18,10 @@ fit_cfr(
 data frame with \code{y}, \code{outcome}, \code{pwindow}, \code{swindow}.}
 
 \item{delay}{Onset-to-death delay as a \pkg{distspec} distribution
-(\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}) whose native parameters
+(\code{\link[distspec:Distributions]{distspec::LogNormal()}} or \code{\link[distspec:Distributions]{distspec::Gamma()}}) whose native parameters
 are fixed numbers or \code{Normal()} priors.}
 
-\item{cfr_prior}{CFR prior as a \code{\link[distspec:Beta]{distspec::Beta()}}. Defaults to \code{Beta(1, 1)}.}
+\item{cfr_prior}{CFR prior as a \code{\link[distspec:Distributions]{distspec::Beta()}}. Defaults to \code{Beta(1, 1)}.}
 
 \item{recovery_delay}{Optional onset-to-recovery delay (same form as \code{delay})
 for the two-outcome fit; may use a different family from \code{delay}.}
@@ -33,7 +33,7 @@ the CFR (\code{cfr ~ ...}). Defaults to \code{mu ~ 1}.}
 (e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}
 }
 \value{
-A \code{brmsfit} with class \code{cfrnow_fit}; summarise with \code{\link[=summary]{summary()}}.
+A \code{brmsfit} with class \code{cfrnow_fit}; summarise with \code{\link[cmdstanr:fit-method-summary]{cmdstanr::summary()}}.
 }
 \description{
 Estimates a real-time case fatality ratio from line-list data. Each case is
@@ -73,7 +73,8 @@ fit_cfr(d, delay = otd, formula = brms::bf(mu ~ 1, cfr ~ group))
 }
 }
 \seealso{
-Other fit:
-\code{\link[=summary.cfrnow_fit]{summary.cfrnow_fit()}}
+Other fit: 
+\code{\link{pp_check_cfr}()},
+\code{\link{summary.cfrnow_fit}()}
 }
 \concept{fit}

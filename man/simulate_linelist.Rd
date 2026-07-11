@@ -19,7 +19,7 @@ simulate_linelist(
 \item{cfr}{True case fatality ratio.}
 
 \item{delay}{Onset-to-death delay: a distspec distribution
-(\code{\link[distspec:LogNormal]{distspec::LogNormal()}} or \code{\link[distspec:Gamma]{distspec::Gamma()}}) with fixed parameters.}
+(\code{\link[distspec:Distributions]{distspec::LogNormal()}} or \code{\link[distspec:Distributions]{distspec::Gamma()}}) with fixed parameters.}
 
 \item{recovery}{Optional onset-to-recovery delay (same form as \code{delay}); when
 given, non-fatal cases get a \code{recovery_date}.}
@@ -53,6 +53,8 @@ delays are exactly a doubly-interval-censored draw, which makes the simulator
 suitable for checking calibration, not only rough recovery.
 }
 \examples{
-simulate_linelist(n = 5, cfr = 0.6,
-                  delay = LogNormal(mean = 12.75, sd = 7))
+simulate_linelist(
+  n = 5, cfr = 0.6,
+  delay = LogNormal(mean = 12.75, sd = 7)
+)
 }
