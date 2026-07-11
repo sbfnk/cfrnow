@@ -40,7 +40,8 @@ the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd 
 \code{info_tol} times the prior sd.
 }
 \seealso{
-Other fit:
-\code{\link[=fit_cfr]{fit_cfr()}}
+Other fit: 
+\code{\link{fit_cfr}()},
+\code{\link{pp_check_cfr}()}
 }
 \concept{fit}

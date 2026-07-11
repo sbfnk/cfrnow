@@ -78,6 +78,14 @@ test_that("retrospective obs_time field is a Date, matching real-time mode", {
   expect_s3_class(prepare_cfr_data(ll, obs_time = NULL)$obs_time, "Date")
 })
 
+test_that("a non-NULL NA obs_time is rejected", {
+  ll <- data.frame(
+    onset_date = as.Date("2026-01-01"),
+    death_date = as.Date("2026-01-10")
+  )
+  expect_error(prepare_cfr_data(ll, obs_time = NA), "valid date")
+})
+
 test_that("onset windows widen the primary censoring width", {
   ll <- data.frame(
     onset_date = as.Date("2026-01-01"),

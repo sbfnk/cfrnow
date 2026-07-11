@@ -78,8 +78,16 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
   no_recovery <- as.Date(rep(NA, nrow(linelist)))
   recovery <- optional_date_col("recovery_date", no_recovery)
 
-  obs_time <- if (!is.null(obs_time)) as.Date(obs_time)
+  # NULL means a retrospective fit. Store the cut-off as a typed Date so
+  # downstream code (and the fit) always sees a Date; reject a stray NA so it is
+  # not mistaken for a real cut-off.
   retrospective <- is.null(obs_time)
+  obs_time <- if (retrospective) as.Date(NA) else as.Date(obs_time)
+  if (!retrospective && is.na(obs_time)) {
+    stop("`obs_time` must be a valid date, or NULL for a retrospective fit.",
+      call. = FALSE
+    )
+  }
   if (is.null(t0)) t0 <- min(onset, na.rm = TRUE) - max_delay
   t0 <- as.Date(t0)
 
@@ -189,7 +197,7 @@ prepare_cfr_data <- function(linelist, obs_time = NULL,
       n_recoveries = length(recovery_delay),
       cases = cases,
       t0 = t0,
-      obs_time = if (retrospective) as.Date(NA) else obs_time
+      obs_time = obs_time
     ),
     class = "cfrnow_data"
   )

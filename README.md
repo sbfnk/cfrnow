@@ -163,10 +163,3 @@ reading before you quote a number:
   stays censored and drifts toward the fatal branch over time, biasing
   `cfr` *up*. The death-only default (no `recovery_date`) sidesteps
   this, so prefer it where discharge recording is patchy.
-
-## Roadmap
-
-Known gaps, roughly in priority order: a death-reporting-delay
-nowcasting layer for the case denominator; posterior-predictive checks;
-and richer delay structure (covariates on the delay, separate recovery
-family).

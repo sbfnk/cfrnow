@@ -20,10 +20,5 @@ Useful links:
 \author{
 \strong{Maintainer}: Sebastian Funk \email{sebastian.funk@lshtm.ac.uk}
 
-Authors:
-\itemize{
-  \item Sebastian Funk \email{sebastian.funk@lshtm.ac.uk}
-}
-
 }
 \keyword{internal}
