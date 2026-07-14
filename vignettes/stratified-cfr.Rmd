@@ -1,0 +1,178 @@
+---
+title: "Stratified and partially-pooled CFR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Stratified and partially-pooled CFR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## Why stratify, and why pool
+
+CFR usually varies by group -- age, treatment centre, calendar period -- and you
+often want a per-group number. Two naive options both disappoint when some
+groups are sparse. Fitting each group independently returns noisy estimates
+wherever the data are thin. Ignoring the grouping and reporting one CFR hides
+real heterogeneity.
+
+*Partial pooling* is the middle path: fit a single model in which each group's
+CFR is drawn from a common distribution, so data-rich groups are estimated
+almost independently while data-poor groups are shrunk toward the shared mean.
+Because `cfrnow` is an [epidist](https://epidist.epinowcast.org/) model, the CFR
+takes a `brms` formula, so pooling is a one-line change: `cfr ~ (1 | group)`.
+
+## A six-site line list
+
+We simulate six treatment centres with a wide range of sample sizes (18 to 400)
+and true CFRs scattered around a common mean. The data-rich sites anchor the
+mean; the sparse ones are where pooling earns its keep. Site labels are
+synthetic.
+
+```{r data}
+library(cfrnow)
+set.seed(20260714)
+
+sites <- data.frame(
+  site = c("A", "B", "C", "D", "E", "F"),
+  n    = c(400, 250, 120, 60, 30, 18),
+  cfr  = c(0.50, 0.42, 0.55, 0.30, 0.62, 0.40)
+)
+
+death_delay    <- LogNormal(mean = 11, sd = 6.5)
+recovery_delay <- LogNormal(mean = 16, sd = 8)
+
+ll <- do.call(rbind, Map(function(s, n, cfr) {
+  cbind(
+    simulate_linelist(
+      n = n, cfr = cfr, delay = death_delay,
+      recovery = recovery_delay, onset_days = 45
+    ),
+    site = s
+  )
+}, sites$site, sites$n, sites$cfr))
+
+d <- prepare_cfr_data(ll, obs_time = as.Date("2026-02-20"), covariates = "site")
+c(cases = d$n_cases, deaths = d$n_deaths)
+```
+
+## Three fits: complete, no, and partial pooling
+
+The only thing that changes across the three fits is the CFR formula; the delay
+and recovery delay are co-estimated in every case. (Two short chains keep the
+vignette quick; use more for real work.)
+
+```{r fits, results = "hide", message = FALSE, warning = FALSE}
+otd <- LogNormal(meanlog = Normal(2.4, 0.2), sdlog = Normal(0.5, 0.15))
+otr <- LogNormal(meanlog = Normal(2.7, 0.2), sdlog = Normal(0.5, 0.15))
+args <- list(
+  delay = otd, recovery_delay = otr, cfr_prior = Beta(1, 1),
+  backend = "cmdstanr", chains = 2, iter = 1000, refresh = 0, seed = 1
+)
+
+# complete pooling: a single CFR
+fit_pool    <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ 1)), args))
+
+# no pooling: an independent CFR per site (treatment-coded: A is the reference)
+fit_sep     <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ site)), args))
+
+# partial pooling: per-site CFR shrunk to a common mean
+fit_partial <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ (1 | site))), args))
+```
+
+## Reading the estimates out
+
+`summary()` supports the intercept-only (complete-pool) fit directly:
+
+```{r summary-pool}
+summary(fit_pool)
+```
+
+For the `cfr ~ ...` fits it errors -- there is no single CFR to tabulate -- so
+pull the `cfr` distributional parameter per site with `posterior_epred(dpar =
+"cfr")` (the parameter is logit-linked, so this returns the CFR on the (0, 1)
+scale). Predicting on the fitted rows and taking one column per site is
+parameterisation-agnostic:
+
+```{r extract}
+col_for <- vapply(sites$site, function(s) which(d$cases$site == s)[1], integer(1))
+
+by_site <- function(fit, approach) {
+  ep <- brms::posterior_epred(fit, dpar = "cfr")[, col_for, drop = FALSE]
+  data.frame(
+    approach = approach, site = sites$site, n = sites$n,
+    median = apply(ep, 2, median),
+    lower  = apply(ep, 2, quantile, 0.025),
+    upper  = apply(ep, 2, quantile, 0.975),
+    truth  = sites$cfr
+  )
+}
+
+pooled <- {
+  s <- summary(fit_pool)
+  data.frame(
+    approach = "complete pool", site = sites$site, n = sites$n,
+    median = s$q50[1], lower = s$q2.5[1], upper = s$q97.5[1], truth = sites$cfr
+  )
+}
+
+est <- rbind(pooled, by_site(fit_sep, "no pool"), by_site(fit_partial, "partial pool"))
+est$approach <- factor(est$approach, levels = c("complete pool", "no pool", "partial pool"))
+```
+
+## Shrinkage in one picture
+
+Each site shows its no-pool and partial-pool estimate against the truth (×) and
+the complete-pool mean (dotted). The data-rich sites (A, B) barely move; the
+sparse ones (E, F) are pulled toward the mean and tightened -- trading a little
+bias for a large drop in variance.
+
+```{r shrinkage, fig.width = 6.5, fig.height = 3.6}
+library(ggplot2)
+est$site <- factor(est$site, levels = rev(sites$site))
+pool_mean <- est$median[est$approach == "complete pool"][1]
+
+ggplot(subset(est, approach != "complete pool"), aes(median, site, colour = approach)) +
+  geom_vline(xintercept = pool_mean, linetype = 3) +
+  geom_point(aes(x = truth), shape = 4, size = 2.4, colour = "grey30") +
+  geom_pointrange(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.55)) +
+  scale_y_discrete(labels = function(s) paste0(s, "  (n=", sites$n[match(s, sites$site)], ")")) +
+  labs(
+    x = "CFR: median & 95% CrI   (× = truth, dotted = complete-pool mean)",
+    y = NULL, colour = NULL
+  ) +
+  theme_minimal()
+```
+
+## Let the delay vary too
+
+An "irregular" pooled delay is often just several populations stacked. If sites
+resolve on different timescales, pool the delay by site as well, so each keeps
+its own onset-to-death distribution and the shared shape stops being multimodal:
+
+```{r delay-pool, eval = FALSE}
+fit_both <- do.call(fit_cfr, c(
+  list(d, formula = brms::bf(mu ~ (1 | site), cfr ~ (1 | site))), args
+))
+```
+
+## Check the fit
+
+Confirm the parametric delay reproduces the observed delays before trusting the
+tail extrapolation the real-time correction relies on:
+
+```{r ppcheck, fig.width = 6.5, fig.height = 3.6, message = FALSE, warning = FALSE}
+pp_check_cfr(fit_partial, type = "delay")
+```
+
+## Takeaways
+
+- Pooling is a formula change: `cfr ~ (1 | group)` co-fits every group in one
+  model and shrinks the sparse ones toward a shared mean.
+- `summary()` handles the intercept-only fit; for grouped fits read the `cfr`
+  parameter with `posterior_epred(dpar = "cfr")`.
+- If the pooled onset-to-death delay looks irregular, suspect a mixture: pool the
+  delay by group too before reaching for a more flexible family.
