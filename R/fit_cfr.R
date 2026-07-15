@@ -28,7 +28,10 @@
 #' @param recovery_delay Optional onset-to-recovery delay (same form as `delay`)
 #'   for the two-outcome fit; may use a different family from `delay`.
 #' @param formula A `brms` formula for the delay location `mu` and, optionally,
-#'   the CFR (`cfr ~ ...`). Defaults to `mu ~ 1`.
+#'   the CFR (`cfr ~ ...`). Defaults to `mu ~ 1`. The `cfr_prior` normally lands
+#'   on the CFR intercept; when the CFR formula drops the intercept (e.g.
+#'   `cfr ~ 0 + group`, one logit-CFR per group) it is placed on those
+#'   coefficients instead.
 #' @param ... Passed to [epidist::epidist()] and on to [brms::brm()]
 #'   (e.g. `chains`, `iter`, `backend`, `seed`).
 #' @return A `brmsfit` with class `cfrnow_fit`; summarise with [summary()].
@@ -62,7 +65,8 @@ fit_cfr <- function(data,
   cure <- as_epidist_cure_model(data)
   dd <- .delay_family_prior(delay, main = TRUE)
   dfam <- dd$family
-  prior <- c(.cfr_prior_to_brms(cfr_prior), dd$prior)
+  cfr_class <- if (.cfr_has_intercept(formula)) "Intercept" else "b"
+  prior <- c(.cfr_prior_to_brms(cfr_prior, cfr_class), dd$prior)
   rfam <- dfam
   if (isTRUE(attr(cure, "use_recovery"))) {
     if (is.null(recovery_delay)) {

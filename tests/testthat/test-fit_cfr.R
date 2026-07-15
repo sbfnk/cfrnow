@@ -137,3 +137,19 @@ test_that("print reports the delay family, counts and naive CFR", {
   expect_message(print(fit), "naive CFR")
   expect_invisible(suppressMessages(print(fit)))
 })
+
+test_that("an intercept-free cfr formula fits one CFR per group", {
+  skip_if_no_cmdstan()
+  set.seed(21)
+  a <- simulate_linelist(n = 1200, cfr = 0.25, delay = LogNormal(2.4, 0.5))
+  b <- simulate_linelist(n = 1200, cfr = 0.6, delay = LogNormal(2.4, 0.5))
+  da <- as_epidist_cure_model(prepare_cfr_data(a, obs_time = NULL))
+  db <- as_epidist_cure_model(prepare_cfr_data(b, obs_time = NULL))
+  da$grp <- "low"
+  db$grp <- "high"
+  d <- as_epidist_cure_model(rbind(da, db))
+  fit <- fit_quick(d, delay = otd, formula = brms::bf(mu ~ 1, cfr ~ 0 + grp))
+  fe <- brms::fixef(fit)
+  expect_true(all(c("cfr_grplow", "cfr_grphigh") %in% rownames(fe)))
+  expect_lt(fe["cfr_grplow", "Estimate"], fe["cfr_grphigh", "Estimate"])
+})

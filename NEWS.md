@@ -4,6 +4,10 @@
   line-list outcomes from the posterior, replays the real-time truncation, and
   compares the observed death counts (plus recoveries in a two-outcome fit) and
   the observed onset-to-death delays against the replicates (#14).
+* `fit_cfr()` accepts intercept-free CFR formulas (e.g. `cfr ~ 0 + group`, one
+  estimated logit-CFR per group): the `cfr_prior` is placed on those
+  coefficients rather than a non-existent intercept, so the fit no longer fails
+  brms prior validation.
 
 # cfrnow 0.1.0
 
