@@ -9,6 +9,13 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Fit chunks need CmdStan; evaluate them only where a toolchain is present so the
+# vignette still builds on CmdStan-less builders (Windows R CMD check, CRAN) --
+# there it shows the code without running it, while pkgdown renders in full.
+knitr::opts_chunk$set(
+  eval = requireNamespace("cmdstanr", quietly = TRUE) &&
+    !is.null(tryCatch(cmdstanr::cmdstan_version(), error = function(e) NULL))
+)
 ```
 
 ## Why stratify, and why pool
