@@ -91,8 +91,13 @@ fit_partial <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ (1 | 
 
 ## Reading the estimates
 
-`summary()` reports the CFR per group: a single `cfr` row for the complete-pool
-fit, and one `cfr[<site>]` row per site for a grouped fit.
+For the complete-pool fit, `summary()` reports a single `cfr` row:
+
+```{r summary-pool}
+summary(fit_pool)
+```
+
+For a grouped fit it reports one `cfr[<site>]` row per site:
 
 ```{r summary-grouped}
 summary(fit_sep)
@@ -166,12 +171,3 @@ correction depends on extrapolating that delay's tail.
 ```{r ppcheck, fig.width = 6.5, fig.height = 3.6, message = FALSE, warning = FALSE}
 pp_check_cfr(fit_partial, type = "delay")
 ```
-
-## Takeaways
-
-- Pooling is a formula change: `cfr ~ (1 | group)` fits every group in one model
-  and shrinks small-sample groups toward the shared mean.
-- `summary()` returns one `cfr[<group>]` row per group for a grouped fit, so the
-  per-group CFRs are read directly from it.
-- If the pooled onset-to-death delay appears irregular, consider a mixture: pool
-  the delay by group before using a more flexible family.
