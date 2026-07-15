@@ -50,8 +50,8 @@ naive_cfr <- function(n_deaths, n_cases) {
 
 # Per-group CFR draws for a `cfr ~ group` fit: one column per distinct
 # combination of the (factor/character) cfr predictors, labelled by it. Predicts
-# the cfr dpar on the fitted rows -- parameterisation-agnostic, and including any
-# group-level effects -- then applies the ascertainment shift.
+# the cfr dpar on the fitted rows (parameterisation-agnostic, includes any
+# group-level effects), then applies the ascertainment shift.
 .cfr_group_draws <- function(object, ascertainment_ratio) {
   vars <- setdiff(all.vars(object$formula$pforms$cfr), "cfr")
   dat <- object$data
@@ -61,7 +61,7 @@ naive_cfr <- function(n_deaths, n_cases) {
     logical(1)
   ))
   if (!discrete) {
-    stop("summary() reports per-group CFRs for factor/character `cfr` ",
+    stop("summary() reports per-group CFRs for factor or character `cfr` ",
       "predictors; for a continuous predictor use brms::posterior_epred() ",
       "with a newdata grid.",
       call. = FALSE
@@ -135,7 +135,7 @@ naive_cfr <- function(n_deaths, n_cases) {
 #'
 #' For a `cfr ~ group` fit the CFR varies by group, so one `cfr[<group>]` row is
 #' reported per group (grouping predictors must be factors or characters), and
-#' the `cfr_low_information` flag is `NA` -- it is only defined for a single CFR.
+#' the `cfr_low_information` flag is `NA` (only defined for a single CFR).
 #'
 #' The CFR the model fits is the fatality risk among *ascertained* cases. When
 #' ascertainment is outcome-dependent -- fatal and non-fatal cases entering the
@@ -156,8 +156,8 @@ naive_cfr <- function(n_deaths, n_cases) {
 #'   fatal to non-fatal cases (see Details). A single positive number; defaults
 #'   to 1 (no correction).
 #' @param ... Unused.
-#' @return A data frame with one row per quantity: `cfr` (or, for a `cfr ~ group`
-#'   fit, one `cfr[<group>]` row per group), `delay_mean` and `delay_sd`,
+#' @return A data frame with one row per quantity: `cfr` (or one `cfr[<group>]`
+#'   row per group for a `cfr ~ group` fit), `delay_mean` and `delay_sd`,
 #'   carrying `naive_cfr`, `n_cases`, `n_deaths`, `cfr_prior_sd`,
 #'   `cfr_low_information` and `ascertainment_ratio` attributes.
 #' @family fit
@@ -187,7 +187,7 @@ summary.cfrnow_fit <- function(object, probs = c(0.025, 0.5, 0.975),
   names(out)[1] <- "quantity"
 
   # Weak identification is a single-CFR diagnostic: undo the shift and measure
-  # the CFR spread on the fitted (r = 1) scale against the (also r = 1) prior sd.
+  # the CFR spread on the fitted (r = 1) scale against the r = 1 prior sd.
   # It is not defined for a grouped fit, where the CFR varies by group.
   prior_sd <- object$cfrnow$cfr_prior_sd
   low_info <- NA

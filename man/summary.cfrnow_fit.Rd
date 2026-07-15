@@ -32,8 +32,8 @@ to 1 (no correction).}
 \item{x}{A \code{cfrnow_fit}.}
 }
 \value{
-A data frame with one row per quantity: \code{cfr} (or, for a \code{cfr ~ group}
-fit, one \verb{cfr[<group>]} row per group), \code{delay_mean} and \code{delay_sd},
+A data frame with one row per quantity: \code{cfr} (or one \verb{cfr[<group>]}
+row per group for a \code{cfr ~ group} fit), \code{delay_mean} and \code{delay_sd},
 carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths}, \code{cfr_prior_sd},
 \code{cfr_low_information} and \code{ascertainment_ratio} attributes.
 }
@@ -52,7 +52,7 @@ the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd 
 
 For a \code{cfr ~ group} fit the CFR varies by group, so one \verb{cfr[<group>]} row is
 reported per group (grouping predictors must be factors or characters), and
-the \code{cfr_low_information} flag is \code{NA} -- it is only defined for a single CFR.
+the \code{cfr_low_information} flag is \code{NA} (only defined for a single CFR).
 
 The CFR the model fits is the fatality risk among \emph{ascertained} cases. When
 ascertainment is outcome-dependent -- fatal and non-fatal cases entering the
