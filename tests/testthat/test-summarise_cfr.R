@@ -66,3 +66,12 @@ test_that("summary() applies the ascertainment correction to a real fit", {
     attr(base, "cfr_low_information")
   )
 })
+
+test_that(".cfr_is_grouped detects a grouped cfr formula", {
+  mk <- function(f) structure(list(formula = f), class = "brmsfit")
+  expect_false(.cfr_is_grouped(mk(brms::bf(mu ~ 1)))) # cfr defaults to intercept
+  expect_false(.cfr_is_grouped(mk(brms::bf(mu ~ 1, cfr ~ 1))))
+  expect_true(.cfr_is_grouped(mk(brms::bf(mu ~ 1, cfr ~ site))))
+  expect_true(.cfr_is_grouped(mk(brms::bf(mu ~ 1, cfr ~ 0 + site))))
+  expect_true(.cfr_is_grouped(mk(brms::bf(mu ~ 1, cfr ~ (1 | site)))))
+})

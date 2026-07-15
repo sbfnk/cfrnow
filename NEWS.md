@@ -11,6 +11,9 @@
   estimated logit-CFR per group): the `cfr_prior` is placed on those
   coefficients rather than a non-existent intercept, so the fit no longer fails
   brms prior validation.
+* `summary()` reports a CFR per group for a `cfr ~ group` fit (one `cfr[<group>]`
+  row per group), rather than erroring or silently reporting only the reference
+  level.
 
 # cfrnow 0.1.0
 

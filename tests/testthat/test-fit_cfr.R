@@ -153,3 +153,21 @@ test_that("an intercept-free cfr formula fits one CFR per group", {
   expect_true(all(c("cfr_grplow", "cfr_grphigh") %in% rownames(fe)))
   expect_lt(fe["cfr_grplow", "Estimate"], fe["cfr_grphigh", "Estimate"])
 })
+
+test_that("summary() reports a CFR per group for a grouped fit", {
+  skip_if_no_cmdstan()
+  set.seed(22)
+  a <- simulate_linelist(n = 800, cfr = 0.25, delay = LogNormal(2.4, 0.5))
+  b <- simulate_linelist(n = 800, cfr = 0.6, delay = LogNormal(2.4, 0.5))
+  da <- as_epidist_cure_model(prepare_cfr_data(a, obs_time = NULL))
+  db <- as_epidist_cure_model(prepare_cfr_data(b, obs_time = NULL))
+  da$site <- "A"
+  db$site <- "B"
+  d <- as_epidist_cure_model(rbind(da, db))
+  s <- summary(fit_quick(d, delay = otd, formula = brms::bf(mu ~ 1, cfr ~ 0 + site)))
+  expect_true(all(c("cfr[A]", "cfr[B]") %in% s$quantity))
+  expect_lt(abs(s[s$quantity == "cfr[A]", "q50"] - 0.25), 0.07)
+  expect_lt(abs(s[s$quantity == "cfr[B]", "q50"] - 0.60), 0.07)
+  # the weak-identification flag is not defined for a grouped fit
+  expect_true(is.na(attr(s, "cfr_low_information")))
+})
