@@ -6,8 +6,7 @@
   the observed onset-to-death delays against the replicates (#14).
 * `summary()` gains an `ascertainment_ratio` argument that corrects the CFR for
   outcome-dependent case ascertainment (fatal and non-fatal cases entering the
-  line list at different rates). The ratio is an external assumption, not
-  estimated from the data.
+  line list at different rates). The ratio is supplied, defaulting to 1.
 
 # cfrnow 0.1.0
 

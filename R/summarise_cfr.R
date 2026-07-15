@@ -27,11 +27,8 @@ naive_cfr <- function(n_deaths, n_cases) {
 
 #' Correct the ascertained CFR for outcome-dependent ascertainment
 #'
-#' The model fits the fatality risk among *ascertained* cases. If fatal cases
-#' enter the line list at `r` times the rate of non-fatal ones, the population
-#' CFR is the ascertained CFR shifted on the logit scale by `-log(r)`. `r` is
-#' not identified from the line list, so it is supplied, not estimated; `r = 1`
-#' (unbiased ascertainment) leaves the CFR unchanged.
+#' Shifts the logit-scale CFR draws by `-log(r)`; `r` = 1 leaves the CFR
+#' unchanged. See [summary.cfrnow_fit()] Details for the rationale.
 #' @param logit_cfr Logit-scale CFR draws.
 #' @param ascertainment_ratio Ratio `r` of the ascertainment probability of
 #'   fatal to non-fatal cases.
@@ -88,26 +85,24 @@ naive_cfr <- function(n_deaths, n_cases) {
 #' the `cfr_low_information` attribute: `TRUE` when the CFR posterior sd exceeds
 #' `info_tol` times the prior sd.
 #'
-#' The CFR the model fits is the fatality risk among *ascertained* cases. If
-#' ascertainment is outcome-dependent -- fatal cases entering the line list at a
-#' different rate from non-fatal ones -- this differs from the population CFR.
+#' The CFR the model fits is the fatality risk among *ascertained* cases. When
+#' ascertainment is outcome-dependent -- fatal and non-fatal cases entering the
+#' line list at different rates -- this differs from the population CFR.
 #' `ascertainment_ratio` (`r`) is the ratio of the ascertainment probability of
 #' fatal to non-fatal cases; the reported CFR is shifted on the logit scale by
-#' `-log(r)`, so `r > 1` (fatal cases over-ascertained) lowers it and `r < 1`
-#' (e.g. deaths not linked back to cases) raises it. `r` is *not* identifiable
-#' from the line list; it is an external assumption, not something the data can
-#' estimate, so it defaults to 1 (unbiased ascertainment). Because the
-#' correction is a post-hoc logit shift, sweep a range of `r` to show its
-#' leverage rather than trusting a single value.
+#' `-log(r)`, so `r` > 1 (fatal cases over-ascertained) lowers it and `r` < 1
+#' (e.g. deaths not linked back to cases) raises it. It is supplied, not fitted,
+#' and defaults to 1 (no correction); because the correction is a post-hoc logit
+#' shift, sweep a range of `r` to show its leverage rather than trusting a
+#' single value.
 #'
 #' @param object A `cfrnow_fit` from [fit_cfr()].
 #' @param probs Quantiles to report.
 #' @param info_tol Low-information threshold: flag when the CFR posterior sd is
 #'   more than this fraction of the prior sd. Defaults to 0.9.
 #' @param ascertainment_ratio Ratio `r` of the ascertainment probability of
-#'   fatal to non-fatal cases, used to correct the CFR for outcome-dependent
-#'   ascertainment (see Details). A single positive number; defaults to 1 (no
-#'   correction). Not estimable from the data.
+#'   fatal to non-fatal cases (see Details). A single positive number; defaults
+#'   to 1 (no correction).
 #' @param ... Unused.
 #' @return A data frame with one row per quantity (`cfr`, `delay_mean`,
 #'   `delay_sd`), carrying `naive_cfr`, `n_cases`, `n_deaths`, `cfr_prior_sd`,

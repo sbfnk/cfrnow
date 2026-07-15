@@ -24,9 +24,8 @@
 more than this fraction of the prior sd. Defaults to 0.9.}
 
 \item{ascertainment_ratio}{Ratio \code{r} of the ascertainment probability of
-fatal to non-fatal cases, used to correct the CFR for outcome-dependent
-ascertainment (see Details). A single positive number; defaults to 1 (no
-correction). Not estimable from the data.}
+fatal to non-fatal cases (see Details). A single positive number; defaults
+to 1 (no correction).}
 
 \item{...}{Unused.}
 
@@ -50,17 +49,16 @@ identified and its posterior stays close to the prior. This is reported via
 the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd exceeds
 \code{info_tol} times the prior sd.
 
-The CFR the model fits is the fatality risk among \emph{ascertained} cases. If
-ascertainment is outcome-dependent -- fatal cases entering the line list at a
-different rate from non-fatal ones -- this differs from the population CFR.
+The CFR the model fits is the fatality risk among \emph{ascertained} cases. When
+ascertainment is outcome-dependent -- fatal and non-fatal cases entering the
+line list at different rates -- this differs from the population CFR.
 \code{ascertainment_ratio} (\code{r}) is the ratio of the ascertainment probability of
 fatal to non-fatal cases; the reported CFR is shifted on the logit scale by
-\code{-log(r)}, so \code{r > 1} (fatal cases over-ascertained) lowers it and \code{r < 1}
-(e.g. deaths not linked back to cases) raises it. \code{r} is \emph{not} identifiable
-from the line list; it is an external assumption, not something the data can
-estimate, so it defaults to 1 (unbiased ascertainment). Because the
-correction is a post-hoc logit shift, sweep a range of \code{r} to show its
-leverage rather than trusting a single value.
+\code{-log(r)}, so \code{r} > 1 (fatal cases over-ascertained) lowers it and \code{r} < 1
+(e.g. deaths not linked back to cases) raises it. It is supplied, not fitted,
+and defaults to 1 (no correction); because the correction is a post-hoc logit
+shift, sweep a range of \code{r} to show its leverage rather than trusting a
+single value.
 }
 \seealso{
 Other fit: 
