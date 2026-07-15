@@ -37,6 +37,14 @@ jobs:
             any::cmdstanr
           needs: website
 
+      # The stratified-CFR vignette fits models at build time, so the docs
+      # builder needs a CmdStan toolchain (not just the cmdstanr package).
+      - name: Install cmdstan
+        uses: epinowcast/actions/install-cmdstan@v1
+        with:
+          cmdstan-version: 'latest'
+          num-cores: 2
+
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
