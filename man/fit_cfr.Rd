@@ -27,7 +27,11 @@ are fixed numbers or \code{Normal()} priors.}
 for the two-outcome fit; may use a different family from \code{delay}.}
 
 \item{formula}{A \code{brms} formula for the delay location \code{mu} and, optionally,
-the CFR (\code{cfr ~ ...}). Defaults to \code{mu ~ 1}.}
+the CFR (\code{cfr ~ ...}). Defaults to \code{mu ~ 1}. The \code{cfr_prior} normally lands
+on the CFR intercept; when the CFR formula drops the intercept (e.g.
+\code{cfr ~ 0 + group}, one logit-CFR per group) it is placed on those
+coefficients instead. It then applies to every \code{cfr} coefficient, so an
+intercept-free formula should carry only factor terms.}
 
 \item{...}{Passed to \code{\link[epidist:epidist]{epidist::epidist()}} and on to \code{\link[brms:brm]{brms::brm()}}
 (e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}

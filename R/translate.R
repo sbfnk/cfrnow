@@ -101,7 +101,7 @@
 
 # A Normal(m, s) on logit(cfr) whose induced mean/sd on the [0, 1] CFR scale
 # match `mean`/`sd` (moment-matched).
-.cfr_logitnormal <- function(cfr_mean, cfr_sd) {
+.cfr_logitnormal <- function(cfr_mean, cfr_sd, class = "Intercept") {
   moments <- function(m, s) {
     x <- seq(m - 6 * s, m + 6 * s, length.out = 2001)
     w <- stats::dnorm(x, m, s)
@@ -119,12 +119,26 @@
   )
   opt <- stats::optim(init, obj, method = "Nelder-Mead")
   brms::set_prior(sprintf("normal(%.4f, %.4f)", opt$par[1], exp(opt$par[2])),
-    class = "Intercept", dpar = "cfr"
+    class = class, dpar = "cfr"
   )
 }
 
-# A distspec Beta() CFR prior -> the matching logit-scale brms prior.
-.cfr_prior_to_brms <- function(cfr_prior) {
+# Does the cfr sub-formula carry a population intercept? A plain formula with no
+# cfr component (the default `mu ~ 1`) leaves cfr intercept-only; `cfr ~ 0 + x`
+# or `cfr ~ x - 1` drops it, in which case the CFR prior belongs on the
+# coefficients (class "b") rather than a non-existent intercept.
+.cfr_has_intercept <- function(formula) {
+  cfr_form <- if (inherits(formula, "brmsformula")) formula$pforms$cfr else NULL
+  if (is.null(cfr_form)) {
+    return(TRUE)
+  }
+  isTRUE(as.logical(attr(stats::terms(cfr_form), "intercept")))
+}
+
+# A distspec Beta() CFR prior -> the matching logit-scale brms prior. `class` is
+# "Intercept" when the cfr formula keeps its intercept, else "b" to place the
+# prior on the (logit-CFR) coefficients of an intercept-free formula.
+.cfr_prior_to_brms <- function(cfr_prior, class = "Intercept") {
   ok <- inherits(cfr_prior, "dist_spec") &&
     get_distribution(cfr_prior) == "beta"
   if (!ok) {
@@ -133,5 +147,5 @@
   p <- get_parameters(cfr_prior)
   a <- p$shape1
   b <- p$shape2
-  .cfr_logitnormal(a / (a + b), sqrt(a * b / ((a + b)^2 * (a + b + 1))))
+  .cfr_logitnormal(a / (a + b), sqrt(a * b / ((a + b)^2 * (a + b + 1))), class)
 }
