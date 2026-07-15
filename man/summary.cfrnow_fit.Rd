@@ -5,7 +5,13 @@
 \alias{print.cfrnow_fit}
 \title{Summarise a mixture-cure CFR fit}
 \usage{
-\method{summary}{cfrnow_fit}(object, probs = c(0.025, 0.5, 0.975), info_tol = 0.9, ...)
+\method{summary}{cfrnow_fit}(
+  object,
+  probs = c(0.025, 0.5, 0.975),
+  info_tol = 0.9,
+  ascertainment_ratio = 1,
+  ...
+)
 
 \method{print}{cfrnow_fit}(x, ...)
 }
@@ -17,14 +23,18 @@
 \item{info_tol}{Low-information threshold: flag when the CFR posterior sd is
 more than this fraction of the prior sd. Defaults to 0.9.}
 
+\item{ascertainment_ratio}{Ratio \code{r} of the ascertainment probability of
+fatal to non-fatal cases (see Details). A single positive number; defaults
+to 1 (no correction).}
+
 \item{...}{Unused.}
 
 \item{x}{A \code{cfrnow_fit}.}
 }
 \value{
 A data frame with one row per quantity (\code{cfr}, \code{delay_mean},
-\code{delay_sd}), carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths}, \code{cfr_prior_sd}
-and \code{cfr_low_information} attributes.
+\code{delay_sd}), carrying \code{naive_cfr}, \code{n_cases}, \code{n_deaths}, \code{cfr_prior_sd},
+\code{cfr_low_information} and \code{ascertainment_ratio} attributes.
 }
 \description{
 Reports the corrected CFR and the onset-to-death delay (mean and sd, in days)
@@ -38,6 +48,17 @@ When few deaths have resolved (a young outbreak) the CFR is only weakly
 identified and its posterior stays close to the prior. This is reported via
 the \code{cfr_low_information} attribute: \code{TRUE} when the CFR posterior sd exceeds
 \code{info_tol} times the prior sd.
+
+The CFR the model fits is the fatality risk among \emph{ascertained} cases. When
+ascertainment is outcome-dependent -- fatal and non-fatal cases entering the
+line list at different rates -- this differs from the population CFR.
+\code{ascertainment_ratio} (\code{r}) is the ratio of the ascertainment probability of
+fatal to non-fatal cases; the reported CFR is shifted on the logit scale by
+\code{-log(r)}, so \code{r} > 1 (fatal cases over-ascertained) lowers it and \code{r} < 1
+(e.g. deaths not linked back to cases) raises it. It is supplied, not fitted,
+and defaults to 1 (no correction); because the correction is a post-hoc logit
+shift, sweep a range of \code{r} to show its leverage rather than trusting a
+single value.
 }
 \seealso{
 Other fit: 
