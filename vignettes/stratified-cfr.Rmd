@@ -13,24 +13,23 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 ## Why stratify, and why pool
 
-CFR usually varies by group -- age, treatment centre, calendar period -- and you
-often want a per-group number. Two naive options both disappoint when some
-groups are sparse. Fitting each group independently returns noisy estimates
-wherever the data are thin. Ignoring the grouping and reporting one CFR hides
-real heterogeneity.
+The CFR often varies by group -- age, treatment centre, calendar period -- and a
+per-group estimate is frequently required. Two limiting cases bracket the
+options. Fitting each group independently (*no pooling*) gives high-variance
+estimates where a group's sample is small. Fitting one CFR for all groups
+(*complete pooling*) ignores between-group variation.
 
-*Partial pooling* is the middle path: fit a single model in which each group's
-CFR is drawn from a common distribution, so data-rich groups are estimated
-almost independently while data-poor groups are shrunk toward the shared mean.
-Because `cfrnow` is an [epidist](https://epidist.epinowcast.org/) model, the CFR
-takes a `brms` formula, so pooling is a one-line change: `cfr ~ (1 | group)`.
+*Partial pooling* lies between the two: each group's CFR is drawn from a common
+distribution, so groups with more data are estimated close to independently while
+groups with less data are shrunk toward the shared mean. `cfrnow` is an
+[epidist](https://epidist.epinowcast.org/) model, so the CFR takes a `brms`
+formula and pooling is a one-line change: `cfr ~ (1 | group)`.
 
 ## A six-site line list
 
-We simulate six treatment centres with a wide range of sample sizes (18 to 400)
-and true CFRs scattered around a common mean. The data-rich sites anchor the
-mean; the sparse ones are where pooling earns its keep. Site labels are
-synthetic.
+We simulate six treatment centres with sample sizes from 18 to 400 and true CFRs
+distributed around a common mean. The larger sites determine the shared mean;
+shrinkage acts mainly on the smaller ones. Site labels are synthetic.
 
 ```{r data}
 library(cfrnow)
@@ -62,8 +61,8 @@ c(cases = d$n_cases, deaths = d$n_deaths)
 ## Three fits: complete, no, and partial pooling
 
 The only thing that changes across the three fits is the CFR formula; the delay
-and recovery delay are co-estimated in every case. (Two short chains keep the
-vignette quick; use more for real work.)
+and recovery delay are co-estimated in each. (Two short chains keep the build
+time short; use more for inference.)
 
 ```{r fits, results = "hide", message = FALSE, warning = FALSE}
 otd <- LogNormal(meanlog = Normal(2.4, 0.2), sdlog = Normal(0.5, 0.15))
@@ -83,7 +82,7 @@ fit_sep     <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ 0 + s
 fit_partial <- do.call(fit_cfr, c(list(d, formula = brms::bf(mu ~ 1, cfr ~ (1 | site))), args))
 ```
 
-## Reading the estimates out
+## Reading the estimates
 
 `summary()` reports the CFR per group: a single `cfr` row for the complete-pool
 fit, and one `cfr[<site>]` row per site for a grouped fit.
@@ -92,7 +91,7 @@ fit, and one `cfr[<site>]` row per site for a grouped fit.
 summary(fit_sep)
 ```
 
-Collect those per-site CFR rows from the two grouped fits for the picture below;
+Collect those per-site CFR rows from the two grouped fits for the figure below;
 the complete-pool fit supplies the shared mean.
 
 ```{r extract}
@@ -114,12 +113,13 @@ s_pool <- summary(fit_pool)
 pool_mean <- s_pool$q50[s_pool$quantity == "cfr"]
 ```
 
-## Shrinkage in one picture
+## Shrinkage
 
 Each site shows its no-pool and partial-pool estimate against the truth (×) and
-the complete-pool mean (dotted). The data-rich sites (A, B) barely move; the
-sparse ones (E, F) are pulled toward the mean and tightened -- trading a little
-bias for a large drop in variance.
+the complete-pool mean (dotted). For the larger sites (A, B) the two estimates
+nearly coincide; for the smaller sites (E, F) the partial-pool estimate is shrunk
+toward the mean and has a narrower interval -- lower variance at the cost of some
+bias.
 
 ```{r shrinkage, fig.width = 6.5, fig.height = 3.6}
 library(ggplot2)
@@ -138,11 +138,12 @@ ggplot(est, aes(median, site, colour = approach)) +
   theme_minimal()
 ```
 
-## Let the delay vary too
+## Varying the delay by group
 
-An "irregular" pooled delay is often just several populations stacked. If sites
-resolve on different timescales, pool the delay by site as well, so each keeps
-its own onset-to-death distribution and the shared shape stops being multimodal:
+A pooled onset-to-death delay that appears irregular is often a mixture of
+several populations. If sites resolve on different timescales, pool the delay by
+site as well, so each retains its own onset-to-death distribution rather than
+contributing to a single multimodal one:
 
 ```{r delay-pool, eval = FALSE}
 fit_both <- do.call(fit_cfr, c(
@@ -152,8 +153,8 @@ fit_both <- do.call(fit_cfr, c(
 
 ## Check the fit
 
-Confirm the parametric delay reproduces the observed delays before trusting the
-tail extrapolation the real-time correction relies on:
+Check that the parametric delay reproduces the observed delays; the real-time
+correction depends on extrapolating that delay's tail.
 
 ```{r ppcheck, fig.width = 6.5, fig.height = 3.6, message = FALSE, warning = FALSE}
 pp_check_cfr(fit_partial, type = "delay")
@@ -161,9 +162,9 @@ pp_check_cfr(fit_partial, type = "delay")
 
 ## Takeaways
 
-- Pooling is a formula change: `cfr ~ (1 | group)` co-fits every group in one
-  model and shrinks the sparse ones toward a shared mean.
-- `summary()` reports one `cfr[<group>]` row per group for a grouped fit, so the
-  per-group CFRs come straight out of it.
-- If the pooled onset-to-death delay looks irregular, suspect a mixture: pool the
-  delay by group too before reaching for a more flexible family.
+- Pooling is a formula change: `cfr ~ (1 | group)` fits every group in one model
+  and shrinks small-sample groups toward the shared mean.
+- `summary()` returns one `cfr[<group>]` row per group for a grouped fit, so the
+  per-group CFRs are read directly from it.
+- If the pooled onset-to-death delay appears irregular, consider a mixture: pool
+  the delay by group before using a more flexible family.
