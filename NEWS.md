@@ -7,6 +7,13 @@
 * `summary()` gains an `ascertainment_ratio` argument that corrects the CFR for
   outcome-dependent case ascertainment (fatal and non-fatal cases entering the
   line list at different rates). The ratio is supplied, defaulting to 1.
+* `fit_cfr()` accepts intercept-free CFR formulas (e.g. `cfr ~ 0 + group`, one
+  estimated logit-CFR per group): the `cfr_prior` is placed on those
+  coefficients rather than a non-existent intercept, so the fit no longer fails
+  brms prior validation.
+* `summary()` reports a CFR per group for a `cfr ~ group` fit (one `cfr[<group>]`
+  row per group), rather than erroring or silently reporting only the reference
+  level.
 
 # cfrnow 0.1.0
 
