@@ -31,7 +31,8 @@
 #'   the CFR (`cfr ~ ...`). Defaults to `mu ~ 1`. The `cfr_prior` normally lands
 #'   on the CFR intercept; when the CFR formula drops the intercept (e.g.
 #'   `cfr ~ 0 + group`, one logit-CFR per group) it is placed on those
-#'   coefficients instead.
+#'   coefficients instead. It then applies to every `cfr` coefficient, so an
+#'   intercept-free formula should carry only factor terms.
 #' @param ... Passed to [epidist::epidist()] and on to [brms::brm()]
 #'   (e.g. `chains`, `iter`, `backend`, `seed`).
 #' @return A `brmsfit` with class `cfrnow_fit`; summarise with [summary()].
