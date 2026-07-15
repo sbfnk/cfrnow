@@ -114,6 +114,8 @@ naive_cfr <- function(n_deaths, n_cases) {
     res$recovery_mean <- r$mean
     res$recovery_sd <- r$sd
   }
+  # A grouped fit's cfr columns come from posterior_epred, which returns draws
+  # in as_draws_df order, so they line up with these chain/iteration ids.
   res$.chain <- dr$.chain
   res$.iteration <- dr$.iteration
   res$.draw <- dr$.draw
