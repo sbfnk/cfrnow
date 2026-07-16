@@ -20,6 +20,10 @@ jobs:
   R-CMD-check:
     if: "! contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ${{ matrix.config.os }}
+    # rstan fails to build on R-devel (upstream boost::ecuyer1988 removal), and
+    # brms depends on it, so devel dies at dependency install. Keep the job for
+    # early warning but don't let this upstream breakage gate the workflow.
+    continue-on-error: ${{ matrix.config.r == 'devel' }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
