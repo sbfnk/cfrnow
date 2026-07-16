@@ -27,11 +27,12 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          # macOS omitted: CmdStan/TBB builds are unreliable on the macOS runners.
+          # macOS omitted: Stan model compilation is slow on the macOS runners.
+          # R-devel omitted: upstream rstan does not build on R-devel
+          # (boost::ecuyer1988 removal); re-add once that is fixed upstream.
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'oldrel-1'}
-          - {os: ubuntu-latest, r: 'devel'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
