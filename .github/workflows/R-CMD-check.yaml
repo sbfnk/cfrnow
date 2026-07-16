@@ -27,9 +27,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          # macOS omitted: Stan model compilation is slow on the macOS runners.
           # R-devel omitted: upstream rstan does not build on R-devel
           # (boost::ecuyer1988 removal); re-add once that is fixed upstream.
+          - {os: macos-latest, r: 'release'}
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'oldrel-1'}
