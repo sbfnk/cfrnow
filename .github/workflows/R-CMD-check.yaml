@@ -28,10 +28,11 @@ jobs:
       matrix:
         config:
           # macOS omitted: CmdStan/TBB builds are unreliable on the macOS runners.
+          # R-devel omitted: upstream rstan (a hard dependency via brms/epidist)
+          # does not build on R-devel; re-add once that is fixed upstream.
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'oldrel-1'}
-          - {os: ubuntu-latest, r: 'devel'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
