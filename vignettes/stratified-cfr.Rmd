@@ -9,12 +9,11 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-# Fit chunks need CmdStan; evaluate them only where a toolchain is present so the
-# vignette still builds on CmdStan-less builders (Windows R CMD check, CRAN) --
-# there it shows the code without running it, while pkgdown renders in full.
+# The fit chunks compile Stan models at runtime, which is too slow for R CMD
+# check and CRAN. They are evaluated only when CFRNOW_RENDER_VIGNETTES is set, as
+# it is for the pkgdown build; elsewhere the vignette shows the code unevaluated.
 knitr::opts_chunk$set(
-  eval = requireNamespace("cmdstanr", quietly = TRUE) &&
-    !is.null(tryCatch(cmdstanr::cmdstan_version(), error = function(e) NULL))
+  eval = nzchar(Sys.getenv("CFRNOW_RENDER_VIGNETTES"))
 )
 ```
 
@@ -77,7 +76,7 @@ otd <- LogNormal(meanlog = Normal(2.4, 0.2), sdlog = Normal(0.5, 0.15))
 otr <- LogNormal(meanlog = Normal(2.7, 0.2), sdlog = Normal(0.5, 0.15))
 args <- list(
   delay = otd, recovery_delay = otr, cfr_prior = Beta(1, 1),
-  backend = "cmdstanr", chains = 2, iter = 1000, refresh = 0, seed = 1
+  backend = "rstan", chains = 2, iter = 1000, refresh = 0, seed = 1
 )
 
 # complete pooling: a single CFR

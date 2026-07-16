@@ -17,6 +17,8 @@ jobs:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # render the model-fitting vignette chunks (rstan) during the site build
+      CFRNOW_RENDER_VIGNETTES: true
     permissions:
       contents: write
     steps:
@@ -27,23 +29,14 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-          extra-repositories: https://stan-dev.r-universe.dev
+          extra-repositories: https://production.r-multiverse.org/2026-06-15
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::pkgdown
             local::.
-            any::cmdstanr
           needs: website
-
-      # The stratified-CFR vignette fits models at build time, so the docs
-      # builder needs a CmdStan toolchain (not just the cmdstanr package).
-      - name: Install cmdstan
-        uses: epinowcast/actions/install-cmdstan@v1
-        with:
-          cmdstan-version: 'latest'
-          num-cores: 2
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)

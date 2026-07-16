@@ -34,12 +34,14 @@ pak::pak("sbfnk/cfrnow")
 [distspec](https://epiforecasts.io/distspec/)), including the GitHub
 versions it needs.
 
-Fitting runs through CmdStan, so you also need
-[cmdstanr](https://mc-stan.org/cmdstanr/) and a CmdStan install:
+Fitting runs through Stan. By default it uses the
+[rstan](https://mc-stan.org/rstan/) backend, which is pulled in automatically and
+needs no separate toolchain, so nothing else is required to get started. To use
+[cmdstanr](https://mc-stan.org/cmdstanr/) instead, install it and a CmdStan
+toolchain and pass `backend = "cmdstanr"` to `fit_cfr()`:
 
 ``` r
 # install.packages("cmdstanr", repos = c("https://stan-dev.r-universe.dev", getOption("repos")))
-cmdstanr::check_cmdstan_toolchain()
 cmdstanr::install_cmdstan()
 ```
 

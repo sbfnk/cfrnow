@@ -34,7 +34,9 @@
 #'   coefficients instead. It then applies to every `cfr` coefficient, so an
 #'   intercept-free formula should carry only factor terms.
 #' @param ... Passed to [epidist::epidist()] and on to [brms::brm()]
-#'   (e.g. `chains`, `iter`, `backend`, `seed`).
+#'   (e.g. `chains`, `iter`, `backend`, `seed`). The Stan `backend` defaults to
+#'   `"rstan"`, which needs no separate CmdStan toolchain; pass
+#'   `backend = "cmdstanr"` to use CmdStan instead.
 #' @return A `brmsfit` with class `cfrnow_fit`; summarise with [summary()].
 #' @examples
 #' \dontrun{
@@ -43,7 +45,7 @@
 #' otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
 #'
 #' # co-estimated delay
-#' fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1), backend = "cmdstanr")
+#' fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1))
 #' summary(fit)
 #'
 #' # fixed delay (Ghani/Nishiura), a gamma family, and a CFR covariate

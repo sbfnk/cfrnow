@@ -1,13 +1,13 @@
-skip_if_no_cmdstan <- function() {
-  testthat::skip_if_not_installed("cmdstanr")
-  ok <- tryCatch(!is.null(cmdstanr::cmdstan_version()), error = function(e) FALSE)
-  testthat::skip_if(!isTRUE(ok), "cmdstan not installed")
+# The end-to-end fits compile a Stan model at runtime (~1 min each) through the
+# default rstan backend -- too slow for CRAN, but they run on CI and locally.
+skip_slow_fit <- function() {
+  testthat::skip_on_cran()
 }
 
 # shared sampler settings for the (slow) end-to-end fits
 fit_quick <- function(d, ...) {
   fit_cfr(d,
-    backend = "cmdstanr", chains = 2, iter = 800, warmup = 400,
+    backend = "rstan", chains = 2, iter = 800, warmup = 400,
     refresh = 0, seed = 1, ...
   )
 }
@@ -15,7 +15,7 @@ fit_quick <- function(d, ...) {
 otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
 
 test_that("a retrospective fit matches the naive proportion", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(11)
   ll <- simulate_linelist(n = 1500, cfr = 0.4, delay = LogNormal(2.4, 0.5))
   d <- prepare_cfr_data(ll, obs_time = NULL) # every case resolved
@@ -25,7 +25,7 @@ test_that("a retrospective fit matches the naive proportion", {
 })
 
 test_that("real-time correction lifts above naive and covers truth", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(12)
   ll <- simulate_linelist(
     n = 2000, cfr = 0.6, onset_days = 40,
@@ -41,7 +41,7 @@ test_that("real-time correction lifts above naive and covers truth", {
 })
 
 test_that("a gamma delay recovers the CFR and delay moments", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(2)
   ll <- simulate_linelist(
     n = 2000, cfr = 0.4, onset_days = 40,
@@ -61,7 +61,7 @@ test_that("a gamma delay recovers the CFR and delay moments", {
 })
 
 test_that("a fixed delay runs the Ghani/Nishiura estimator (delay held constant)", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(4)
   ll <- simulate_linelist(n = 1500, cfr = 0.5, delay = LogNormal(2.4, 0.5))
   d <- prepare_cfr_data(ll, obs_time = NULL)
@@ -75,7 +75,7 @@ test_that("a fixed delay runs the Ghani/Nishiura estimator (delay held constant)
 })
 
 test_that("the formula interface puts covariates on the CFR", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(20)
   a <- simulate_linelist(n = 1200, cfr = 0.2, delay = LogNormal(2.4, 0.5))
   b <- simulate_linelist(n = 1200, cfr = 0.6, delay = LogNormal(2.4, 0.5))
@@ -91,7 +91,7 @@ test_that("the formula interface puts covariates on the CFR", {
 })
 
 test_that("a two-outcome fit uses recovery timing (own family) and recovers F_R", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(5)
   ll <- simulate_linelist(
     n = 2000, cfr = 0.4, onset_days = 40,
@@ -112,7 +112,7 @@ test_that("a two-outcome fit uses recovery timing (own family) and recovers F_R"
 })
 
 test_that("a young outbreak is flagged low-information and print warns", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(10)
   ll <- simulate_linelist(
     n = 25, cfr = 0.5, onset_days = 10,
@@ -128,7 +128,7 @@ test_that("a young outbreak is flagged low-information and print warns", {
 })
 
 test_that("print reports the delay family, counts and naive CFR", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(6)
   ll <- simulate_linelist(n = 400, cfr = 0.5, delay = LogNormal(2.4, 0.5))
   d <- prepare_cfr_data(ll, obs_time = NULL)
@@ -139,7 +139,7 @@ test_that("print reports the delay family, counts and naive CFR", {
 })
 
 test_that("an intercept-free cfr formula fits one CFR per group", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(21)
   a <- simulate_linelist(n = 1200, cfr = 0.25, delay = LogNormal(2.4, 0.5))
   b <- simulate_linelist(n = 1200, cfr = 0.6, delay = LogNormal(2.4, 0.5))
@@ -155,7 +155,7 @@ test_that("an intercept-free cfr formula fits one CFR per group", {
 })
 
 test_that("summary() reports a CFR per group for a grouped fit", {
-  skip_if_no_cmdstan()
+  skip_slow_fit()
   set.seed(22)
   a <- simulate_linelist(n = 800, cfr = 0.25, delay = LogNormal(2.4, 0.5))
   b <- simulate_linelist(n = 800, cfr = 0.6, delay = LogNormal(2.4, 0.5))

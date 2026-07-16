@@ -1,5 +1,10 @@
 # cfrnow (development version)
 
+* The Stan `backend` now defaults to `"rstan"`, which is already a dependency and
+  needs no separate CmdStan toolchain, so `fit_cfr()` works out of the box.
+  `cmdstanr` becomes an optional backend (`backend = "cmdstanr"`), resolved from
+  the R-multiverse snapshot in `Additional_repositories`. Tests and the vignette
+  run on the rstan backend, so CI no longer installs CmdStan.
 * `pp_check_cfr()` runs a posterior-predictive check on a fit: it draws replicate
   line-list outcomes from the posterior, replays the real-time truncation, and
   compares the observed death counts (plus recoveries in a two-outcome fit) and

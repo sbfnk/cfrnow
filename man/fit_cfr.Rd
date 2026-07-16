@@ -34,7 +34,9 @@ coefficients instead. It then applies to every \code{cfr} coefficient, so an
 intercept-free formula should carry only factor terms.}
 
 \item{...}{Passed to \code{\link[epidist:epidist]{epidist::epidist()}} and on to \code{\link[brms:brm]{brms::brm()}}
-(e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}).}
+(e.g. \code{chains}, \code{iter}, \code{backend}, \code{seed}). The Stan \code{backend} defaults to
+\code{"rstan"}, which needs no separate CmdStan toolchain; pass
+\code{backend = "cmdstanr"} to use CmdStan instead.}
 }
 \value{
 A \code{brmsfit} with class \code{cfrnow_fit}; summarise with \code{\link[cmdstanr:fit-method-summary]{cmdstanr::summary()}}.
@@ -67,7 +69,7 @@ d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 5)
 otd <- LogNormal(meanlog = Normal(2.41, 0.2), sdlog = Normal(0.51, 0.15))
 
 # co-estimated delay
-fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1), backend = "cmdstanr")
+fit <- fit_cfr(d, delay = otd, cfr_prior = Beta(1, 1))
 summary(fit)
 
 # fixed delay (Ghani/Nishiura), a gamma family, and a CFR covariate

@@ -48,7 +48,7 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
-          extra-repositories: https://stan-dev.r-universe.dev
+          extra-repositories: https://production.r-multiverse.org/2026-06-15
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -56,16 +56,6 @@ jobs:
             any::rcmdcheck
             any::cmdstanr
           needs: check
-
-      # cmdstanr needs a CmdStan toolchain to compile the model at test time.
-      # Not available on Windows here; the Stan-backed tests skip themselves
-      # when CmdStan is absent (see tests/testthat/test-fit_cfr.R).
-      - name: Install cmdstan
-        if: runner.os != 'Windows'
-        uses: epinowcast/actions/install-cmdstan@v1
-        with:
-          cmdstan-version: 'latest'
-          num-cores: 2
 
       - uses: r-lib/actions/check-r-package@v2
         with:
