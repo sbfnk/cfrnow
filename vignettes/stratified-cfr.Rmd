@@ -34,9 +34,10 @@ formula and pooling is a one-line change: `cfr ~ (1 | group)`.
 
 ## A six-site line list
 
-We simulate six treatment centres with sample sizes from 18 to 400 and true CFRs
-distributed around a common mean. The larger sites determine the shared mean;
-shrinkage acts mainly on the smaller ones. Site labels are synthetic.
+We simulate six treatment centres: two large (n = 450, 250) and four small
+(n = 15--20), with true CFRs spread around a common mean. The large sites pin the
+shared mean; the small ones carry little information on their own, so shrinkage
+acts mainly on them. Site labels are synthetic.
 
 ```{r data}
 library(cfrnow)
@@ -44,8 +45,8 @@ set.seed(20260714)
 
 sites <- data.frame(
   site = c("A", "B", "C", "D", "E", "F"),
-  n    = c(400, 250, 120, 60, 30, 18),
-  cfr  = c(0.50, 0.42, 0.55, 0.30, 0.62, 0.40)
+  n    = c(450, 250, 20, 15, 15, 18),
+  cfr  = c(0.45, 0.50, 0.30, 0.65, 0.35, 0.60)
 )
 
 death_delay    <- LogNormal(mean = 11, sd = 6.5)
@@ -128,10 +129,10 @@ pool_mean <- s_pool$q50[s_pool$quantity == "cfr"]
 ## Shrinkage
 
 Each site shows its no-pool and partial-pool estimate against the truth (×) and
-the complete-pool mean (dotted). For the larger sites (A, B) the two estimates
-nearly coincide; for the smaller sites (E, F) the partial-pool estimate is shrunk
-toward the mean and has a narrower interval -- lower variance at the cost of some
-bias.
+the complete-pool mean (dotted). For the large sites (A, B) the two estimates
+nearly coincide. For the small sites (C--F) the no-pool interval is wide and the
+estimate noisy; partial pooling pulls it toward the mean and narrows the interval
+sharply -- lower variance at the cost of some bias.
 
 ```{r shrinkage, fig.width = 6.5, fig.height = 3.6}
 library(ggplot2)
