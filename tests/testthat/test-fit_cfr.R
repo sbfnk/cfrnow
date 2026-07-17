@@ -60,6 +60,24 @@ test_that("a gamma delay recovers the CFR and delay moments", {
   expect_equal(s[s$quantity == "delay_mean", "q50"], 8, tolerance = 0.8)
 })
 
+test_that("a weibull delay recovers the CFR and delay moments", {
+  skip_if_no_cmdstan()
+  set.seed(3)
+  ll <- simulate_linelist(
+    n = 2000, cfr = 0.4, onset_days = 40,
+    delay = Weibull(shape = 1.5, scale = 13)
+  )
+  d <- prepare_cfr_data(ll, obs_time = max(ll$onset_date) - 2)
+  s <- summary(fit_quick(d,
+    delay = Weibull(shape = Normal(1.5, 0.4), scale = Normal(13, 3)),
+    cfr_prior = Beta(1, 1)
+  ))
+  true_mean <- 13 * gamma(1 + 1 / 1.5) # Weibull mean = scale * Gamma(1 + 1/shape)
+  expect_lt(s[s$quantity == "cfr", "q2.5"], 0.4)
+  expect_gt(s[s$quantity == "cfr", "q97.5"], 0.4)
+  expect_equal(s[s$quantity == "delay_mean", "q50"], true_mean, tolerance = 1.5)
+})
+
 test_that("a fixed delay runs the Ghani/Nishiura estimator (delay held constant)", {
   skip_if_no_cmdstan()
   set.seed(4)

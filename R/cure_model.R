@@ -16,7 +16,7 @@
 #'
 #' The delay distribution's location is `mu` (as `epidist` expects); the cure
 #' probability `cfr` is an additional dpar with a logit link. Supported delay
-#' families are `lognormal()` and `Gamma()`.
+#' families are `lognormal()`, `Gamma()` and `Weibull()`.
 #'
 #' @name cfrnow-cure-model
 #' @keywords internal
@@ -81,8 +81,8 @@ assert_epidist.epidist_cure_model <- function(data, ...) {
 }
 
 .assert_delay_family <- function(family, what = "delay") {
-  if (!family$family %in% c("lognormal", "gamma")) {
-    stop("cfrnow supports lognormal() and Gamma() ", what, "s only.",
+  if (!family$family %in% c("lognormal", "gamma", "weibull")) {
+    stop("cfrnow supports lognormal(), Gamma() and Weibull() ", what, "s only.",
       call. = FALSE
     )
   }
