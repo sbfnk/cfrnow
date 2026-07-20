@@ -29,7 +29,7 @@ test_that("a recovery delay adds recoveries for non-fatal cases only", {
 })
 
 test_that("unsupported families and prior-parameter delays are rejected", {
-  expect_error(sample_delay(5, Exp(rate = 1)), "supports") # exp not supported
+  expect_error(sample_delay(5, Exponential(rate = 1)), "supports") # exp not supported
   expect_error(sample_delay(5, LogNormal(
     meanlog = Normal(2, 0.1), sdlog = Normal(0.5, 0.1)
   )), "fixed")
